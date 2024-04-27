@@ -1,9 +1,9 @@
 struct BigInt {
-    limbs: array<u32, 20>
+    limbs: array<u32, {{ num_limbs }}>
 }
 
 struct BigIntMediumWide {
-    limbs: array<u32, 21>
+    limbs: array<u32, {{ num_limbs + 1 }}>
 }
 
 @group(0) @binding(0)
@@ -21,13 +21,13 @@ fn bigint_add_wide(
 
     var carry: u32 = 0u;
 
-    for (var i: u32 = 0u; i < 20u; i ++) {
+    for (var i: u32 = 0u; i < {{ num_limbs }}u; i ++) {
         let c: u32 = (*lhs).limbs[i] + (*rhs).limbs[i] + carry;
 
-        result.limbs[i] = c & 8191u;
-        carry = c >> 13;
+        result.limbs[i] = c & {{ mask }}u;
+        carry = c >> {{ log_limb_size }}u;
     }
-    result.limbs[20] = carry;
+    result.limbs[{{ num_limbs }}] = carry;
 
     return result;
 }

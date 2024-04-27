@@ -6,10 +6,11 @@ edition = "2021"
 [dependencies]
 bytemuck = "1.15.0"
 futures-intrusive = "0.5.0"
+minijinja = "1.0.21"
 num-bigint = "0.4.4"
 wgpu = "0.19.4"
+multiprecision = { git = "https://github.com/geometers/multiprecision.git" }
 
 [dev-dependencies]
 serial_test = "3.1.0"
 tokio = { version = "1.37.0", features = ["full"] }
-multiprecision = { git = "https://github.com/geometers/multiprecision.git" }

@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use crate::shader::render;
 use crate::gpu::{
     create_empty_sb,
     execute_pipeline,
@@ -10,14 +10,31 @@ use crate::gpu::{
 };
 use num_bigint::BigUint;
 use multiprecision::bigint;
+use multiprecision::utils::calc_num_limbs;
 
 #[serial_test::serial]
 #[tokio::test]
 pub async fn bigint_add_wide() {
-    let log_limb_size = 13;
-    let num_limbs = 20;
-    let a = BigUint::parse_bytes(b"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16).unwrap();
-    let b = BigUint::parse_bytes(b"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff", 16).unwrap();
+    for log_limb_size in 11..15 {
+        let num_limbs = calc_num_limbs(log_limb_size, 256);
+
+        for i in 0..4 {
+            let x = BigUint::from((i + 1 * 824234) as u32);
+            let y = BigUint::from((i + 1 * 223234) as u32);
+            let a = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffff000000000", 16).unwrap() + x;
+            let b = BigUint::parse_bytes(b"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee000000000", 16).unwrap() + y;
+            do_test(a, b, log_limb_size, num_limbs).await;
+        }
+    }
+}
+
+async fn do_test(
+    a: BigUint,
+    b: BigUint,
+    log_limb_size: u32,
+    num_limbs: usize,
+) {
+    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
     let expected = &a + &b;
 
     // We are testing add_wide, so the sum should overflow
@@ -36,18 +53,12 @@ pub async fn bigint_add_wide() {
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, ((num_limbs + 1) * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let path_from_cargo_manifest_dir = "src/tests/";
-    let input_filename = "bigint_add_wide.wgsl";
-    let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path_from_cargo_manifest_dir).join(input_filename);
-    let source = std::fs::read_to_string(input_path).unwrap();
+    let source = render("src/tests/", "bigint_add_wide.wgsl", &p, log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "main");
 
-    let compute_pipeline = create_compute_pipeline(
-        &device,
-        &source,
-        "main"
+    let mut command_encoder = device.create_command_encoder(
+        &wgpu::CommandEncoderDescriptor { label: None }
     );
-
-    let mut command_encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
     let bind_group = create_bind_group(
         &device,
@@ -65,7 +76,11 @@ pub async fn bigint_add_wide() {
         &[result_buf],
     ).await;
 
-    let result = bigint::to_biguint_le(&results[0][0..num_limbs+1].to_vec(), num_limbs + 1, log_limb_size);
+    let result = bigint::to_biguint_le(
+        &results[0][0..num_limbs+1].to_vec(),
+        num_limbs + 1,
+        log_limb_size,
+    );
 
     assert_eq!(result, expected);
 }

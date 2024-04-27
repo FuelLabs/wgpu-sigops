@@ -597,6 +597,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "minijinja"
+version = "1.0.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "55e877d961d4f96ce13615862322df7c0b6d169d40cab71a7ef3f9b9e594451e"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "miniz_oxide"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -619,7 +628,7 @@ dependencies = [
 [[package]]
 name = "multiprecision"
 version = "0.1.0"
-source = "git+https://github.com/geometers/multiprecision.git#ed2d0896b958735087fb4b40099408b2cdc8a938"
+source = "git+https://github.com/geometers/multiprecision.git#6c587aa43507daaf463146537e89a4e4ccc844a9"
 dependencies = [
  "hex",
  "num",
@@ -914,6 +923,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b84345e4c9bd703274a082fb80caaa99b7612be48dfaa1dd9266577ec412309d"
 
 [[package]]
+name = "serde"
+version = "1.0.199"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c9f6e76df036c77cd94996771fb40db98187f096dd0b9af39c6c6e452ba966a"
+dependencies = [
+ "serde_derive",
+]
+
+[[package]]
+name = "serde_derive"
+version = "1.0.199"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11bd257a6541e141e42ca6d24ae26f7714887b47e89aa739099104c7e4d3b7fc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.60",
+]
+
+[[package]]
 name = "serial_test"
 version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -940,9 +969,9 @@ dependencies = [
 
 [[package]]
 name = "signal-hook-registry"
-version = "1.4.1"
+version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
+checksum = "a9e9e0b4211b72e7b8b6e85c807d36c212bdb33ea8587f7569562a84df5465b1"
 dependencies = [
  "libc",
 ]
@@ -1296,6 +1325,7 @@ version = "0.1.0"
 dependencies = [
  "bytemuck",
  "futures-intrusive",
+ "minijinja",
  "multiprecision",
  "num-bigint",
  "serial_test",
