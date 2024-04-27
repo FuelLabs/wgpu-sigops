@@ -1,9 +1,12 @@
-use std::borrow::Cow;
 use std::path::PathBuf;
 use crate::gpu::{
-    create_sb,
     create_empty_sb,
-    get_device_and_queue
+    execute_pipeline,
+    create_bind_group,
+    create_sb_with_data,
+    get_device_and_queue,
+    create_compute_pipeline,
+    finish_encoder_and_read_from_gpu,
 };
 use num_bigint::BigUint;
 use multiprecision::bigint;
@@ -29,8 +32,8 @@ pub async fn bigint_add_wide() {
 
     let (device, queue) = get_device_and_queue().await;
 
-    let a_buf = create_sb(&device, &a_limbs);
-    let b_buf = create_sb(&device, &b_limbs);
+    let a_buf = create_sb_with_data(&device, &a_limbs);
+    let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, ((num_limbs + 1) * 8 * std::mem::size_of::<u8>()) as u64);
 
     let path_from_cargo_manifest_dir = "src/tests/";
@@ -38,91 +41,31 @@ pub async fn bigint_add_wide() {
     let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path_from_cargo_manifest_dir).join(input_filename);
     let source = std::fs::read_to_string(input_path).unwrap();
 
-    let cs_module = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-        label: None,
-        source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(&source)),
-    });
+    let compute_pipeline = create_compute_pipeline(
+        &device,
+        &source,
+        "main"
+    );
 
-    let compute_pipeline = device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
-        label: None,
-        layout: None,
-        module: &cs_module,
-        entry_point: "main",
-    });
+    let mut command_encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
 
-    let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None });
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&a_buf, &b_buf, &result_buf],
+    );
 
-    let bind_group_layout = compute_pipeline.get_bind_group_layout(0);
-    let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-        label: None,
-        layout: &bind_group_layout,
-        entries: &[
-            wgpu::BindGroupEntry {
-                binding: 0,
-                resource: a_buf.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 1,
-                resource: b_buf.as_entire_binding(),
-            },
-            wgpu::BindGroupEntry {
-                binding: 2,
-                resource: result_buf.as_entire_binding(),
-            },
-        ],
-    });
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
-    {
-    let mut cpass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None, timestamp_writes: None });
-    cpass.set_pipeline(&compute_pipeline);
-    cpass.set_bind_group(0, &bind_group, &[]);
-    cpass.insert_debug_marker("debug marker");
-    cpass.dispatch_workgroups(1, 1, 1);
-    }
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf],
+    ).await;
 
-    let staging_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-        label: None,
-        size: result_buf.size(),
-        usage: wgpu::BufferUsages::MAP_READ | wgpu::BufferUsages::COPY_DST,
-        mapped_at_creation: false,
-    });
+    let result = bigint::to_biguint_le(&results[0][0..num_limbs+1].to_vec(), num_limbs + 1, log_limb_size);
 
-    encoder.copy_buffer_to_buffer(&result_buf, 0, &staging_buffer, 0, result_buf.size());
-
-    // Submits command encoder for processing
-    queue.submit(Some(encoder.finish()));
-
-    // Note that we're not calling `.await` here.
-    let buffer_slice = staging_buffer.slice(..);
-
-    // Sets the buffer up for mapping, sending over the result of the mapping back to us when it is finished.
-    let (sender, receiver) = futures_intrusive::channel::shared::oneshot_channel();
-    buffer_slice.map_async(wgpu::MapMode::Read, move |v| sender.send(v).unwrap());
-
-    // Poll the device in a blocking manner so that our future resolves.
-    // In an actual application, `device.poll(...)` should
-    // be called in an event loop or on another thread.
- 
-    device.poll(wgpu::Maintain::Wait);
-
-    // Awaits until `buffer_future` can be read from
-    if let Some(Ok(())) = receiver.receive().await {
-        // Gets contents of buffer
-        let data = buffer_slice.get_mapped_range();
-        // Since contents are got in bytes, this converts these bytes back to u32
-        let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
-
-        // With the current interface, we have to make sure all mapped views are
-        // dropped before we unmap the buffer.
-        drop(data);
-        staging_buffer.unmap();
-
-        // Returns data from buffer
-        let result = bigint::to_biguint_le(&result[0..num_limbs+1].to_vec(), num_limbs + 1, log_limb_size);
-
-        assert_eq!(result, expected);
-    } else {
-        panic!("failed to run compute on gpu!")
-    }
-    device.destroy();
+    assert_eq!(result, expected);
 }
