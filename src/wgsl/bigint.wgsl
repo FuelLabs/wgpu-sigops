@@ -109,10 +109,13 @@ fn bigint_wide_gte(
 ) -> bool {
     for (var i: u32 = 0u; i < {{ num_limbs + 1 }}u; i ++) {
         let idx = {{ num_limbs + 1 }}u - 1u - i;
-        if ((*lhs).limbs[idx] < (*rhs).limbs[idx]) {
-            return false;
-        } else if ((*lhs).limbs[idx] > (*rhs).limbs[idx]) {
+        let l_limb = (*lhs).limbs[idx];
+        let r_limb = (*rhs).limbs[idx];
+
+        if (l_limb > r_limb) {
             return true;
+        } else if (l_limb < r_limb) {
+            return false;
         }
     }
     return true;

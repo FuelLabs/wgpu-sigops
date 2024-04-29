@@ -31,7 +31,7 @@ pub async fn mont_mul_benchmarks() {
 
     let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
 
-    let cost = 65536;
+    let cost = 8192;
 
     let instance = wgpu::Instance::default();
     let adapter = instance

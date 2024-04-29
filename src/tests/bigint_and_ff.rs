@@ -165,14 +165,13 @@ pub async fn bigint_sub() {
 #[tokio::test]
 pub async fn bigint_wide_sub() {
     let mut rng = gen_rng();
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
 
     for log_limb_size in 13..14 {
         let num_limbs = calc_num_limbs(log_limb_size, 256);
 
         for _ in 0..NUM_RUNS_PER_TEST {
-            let x: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256 + 8)) % &p;
-            let y: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256 + 8)) % &p;
+            let x: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let y: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
 
             let (a, b) = if x > y {
                 (x, y)
@@ -244,10 +243,9 @@ pub async fn bigint_wide_gte() {
 
     for log_limb_size in 11..15 {
         let num_limbs = calc_num_limbs(log_limb_size, 256) + 1;
-
         for _ in 0..NUM_RUNS_PER_TEST {
-            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256 + 8));
-            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256 + 8));
+            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
 
             do_bigint_wide_gte_test(a, b, log_limb_size, num_limbs, bigint_gte_func, biguint_gte_func, "tests.wgsl", "test_bigint_wide_gte").await;
         }
