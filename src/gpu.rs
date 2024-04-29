@@ -30,6 +30,14 @@ pub async fn get_device_and_queue() -> (wgpu::Device, wgpu::Queue) {
 
 }
 
+pub fn create_command_encoder(
+    device: &wgpu::Device,
+) -> wgpu::CommandEncoder {
+    device.create_command_encoder(
+        &wgpu::CommandEncoderDescriptor { label: None }
+    )
+}
+
 pub fn create_sb_with_data(
     device: &wgpu::Device,
     data: &[u32],

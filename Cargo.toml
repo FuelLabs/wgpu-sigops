@@ -7,10 +7,12 @@ edition = "2021"
 bytemuck = "1.15.0"
 futures-intrusive = "0.5.0"
 minijinja = "1.0.21"
-num-bigint = "0.4.4"
+num-bigint = { version = "0.4.4", features = ["rand"] }
 wgpu = "0.19.4"
 multiprecision = { git = "https://github.com/geometers/multiprecision.git" }
 
 [dev-dependencies]
 serial_test = "3.1.0"
 tokio = { version = "1.37.0", features = ["full"] }
+rand_chacha = "0.3.1"
+rand = "0.8.5"
