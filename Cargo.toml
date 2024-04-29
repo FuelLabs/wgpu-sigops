@@ -16,3 +16,4 @@ serial_test = "3.1.0"
 tokio = { version = "1.37.0", features = ["full"] }
 rand_chacha = "0.3.1"
 rand = "0.8.5"
+stopwatch = "0.0.7"

@@ -2,7 +2,8 @@ use std::boxed::Box;
 use std::borrow::Cow;
 use wgpu::util::DeviceExt;
 
-pub async fn get_device_and_queue() -> (wgpu::Device, wgpu::Queue) {
+pub async fn get_device_and_queue(
+) -> (wgpu::Device, wgpu::Queue) {
     let instance = wgpu::Instance::default();
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -27,7 +28,6 @@ pub async fn get_device_and_queue() -> (wgpu::Device, wgpu::Queue) {
     //let info = adapter.get_info();
     //println!("{:?}", info);
     (device, queue)
-
 }
 
 pub fn create_command_encoder(

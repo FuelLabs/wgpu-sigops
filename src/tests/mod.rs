@@ -75,4 +75,3 @@ pub async fn do_test(
 
     assert_eq!(result, expected);
 }
-
