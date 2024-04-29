@@ -38,7 +38,7 @@ pub fn do_render(
     template.render(context).unwrap()
 }
 
-pub fn render_bigint_and_ff_tests(
+pub fn render_tests(
     template_path: &str,
     template_file: &str,
     p: &BigUint,
@@ -51,6 +51,9 @@ pub fn render_bigint_and_ff_tests(
 
     let source = read_from_file(template_path, "ff.wgsl");
     env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
