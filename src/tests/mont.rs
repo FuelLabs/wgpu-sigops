@@ -85,7 +85,7 @@ pub async fn mont_mul() {
             let ar = &a * &r % &p;
             let br = &b * &r % &p;
 
-            do_mont_test(&ar, &br, &p, &r, log_limb_size, num_limbs, "tests.wgsl", "test_mont_mul").await;
+            do_mont_test(&ar, &br, &p, &r, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_mont_mul").await;
         }
     }
 }

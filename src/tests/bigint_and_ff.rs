@@ -40,7 +40,7 @@ pub async fn ff_add() {
             let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
             let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
 
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, ff::add, biguint_func, "tests.wgsl", "test_ff_add").await;
+            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, ff::add, biguint_func, "bigint_and_ff_tests.wgsl", "test_ff_add").await;
         }
     }
 }
@@ -67,7 +67,7 @@ pub async fn ff_sub() {
             let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
             let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
     
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, ff::sub, biguint_func, "tests.wgsl", "test_ff_sub").await;
+            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, ff::sub, biguint_func, "bigint_and_ff_tests.wgsl", "test_ff_sub").await;
         }
     }
 }
@@ -102,7 +102,7 @@ pub async fn bigint_wide_add() {
                 bigint::add_wide(a, b, log_limb_size)
             }
     
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs + 1, bigint_func, biguint_func, "tests.wgsl", "test_bigint_wide_add").await;
+            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs + 1, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_wide_add").await;
         }
     }
 }
@@ -126,7 +126,7 @@ pub async fn bigint_add_unsafe() {
             let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
             let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
     
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "tests.wgsl", "test_bigint_add_unsafe").await;
+            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_add_unsafe").await;
         }
     }
 }
@@ -156,7 +156,7 @@ pub async fn bigint_sub() {
                 (y, x)
             };
 
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "tests.wgsl", "test_bigint_sub").await;
+            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_sub").await;
         }
     }
 }
@@ -179,7 +179,7 @@ pub async fn bigint_wide_sub() {
                 (y, x)
             };
 
-            do_bigint_wide_sub_test(a, b, log_limb_size, num_limbs + 1, "tests.wgsl", "test_bigint_wide_sub").await;
+            do_bigint_wide_sub_test(a, b, log_limb_size, num_limbs + 1, "bigint_and_ff_tests.wgsl", "test_bigint_wide_sub").await;
         }
     }
 }
@@ -214,7 +214,7 @@ pub async fn bigint_gte() {
             let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
 
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "tests.wgsl", "test_bigint_gte").await;
+            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_gte").await;
         }
     }
 }
@@ -247,7 +247,7 @@ pub async fn bigint_wide_gte() {
             let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
 
-            do_bigint_wide_gte_test(a, b, log_limb_size, num_limbs, bigint_gte_func, biguint_gte_func, "tests.wgsl", "test_bigint_wide_gte").await;
+            do_bigint_wide_gte_test(a, b, log_limb_size, num_limbs, bigint_gte_func, biguint_gte_func, "bigint_and_ff_tests.wgsl", "test_bigint_wide_gte").await;
         }
     }
 }
