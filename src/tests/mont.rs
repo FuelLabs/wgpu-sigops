@@ -56,11 +56,10 @@ pub async fn mont_mul_benchmarks() {
 
         let mut total = 0;
         for i in 0..NUM_RUNS_PER_TEST + 1 {
-            let sw = Stopwatch::start_new();
-            do_mont_benchmark(&ar, &br, &p, &r, log_limb_size, num_limbs, "benchmarks.wgsl", "benchmark_mont_mul", cost).await;
+            let elapsed = do_mont_benchmark(&ar, &br, &p, &r, log_limb_size, num_limbs, "benchmarks.wgsl", "benchmark_mont_mul", cost).await;
 
             if i > 0 {
-                total += sw.elapsed_ms();
+                total += elapsed;
             }
         }
 
@@ -183,7 +182,7 @@ pub async fn do_mont_benchmark(
     filename: &str,
     entrypoint: &str,
     cost: u32,
-) {
+) -> u32 {
     let res = calc_rinv_and_n0(&p, &r, log_limb_size);
     let rinv = res.0;
 
@@ -212,6 +211,7 @@ pub async fn do_mont_benchmark(
         &[&a_buf, &b_buf, &p_buf, &result_buf, &cost_buf],
     );
 
+    let sw = Stopwatch::start_new();
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
     let results = finish_encoder_and_read_from_gpu(
@@ -220,6 +220,7 @@ pub async fn do_mont_benchmark(
         Box::new(command_encoder),
         &[result_buf],
     ).await;
+    let elapsed = sw.elapsed_ms();
 
     let result = bigint::to_biguint_le(
         &results[0][0..num_limbs].to_vec(),
@@ -228,4 +229,6 @@ pub async fn do_mont_benchmark(
     );
 
     assert_eq!(result, expected);
+
+    elapsed as u32
 }

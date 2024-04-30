@@ -87,13 +87,8 @@ fn test_bigint_wide_gte(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     var result: BigIntMediumWide;
     if (bigint_wide_gte(&a_bigint, &b_bigint)) {
-        //result.limbs[0] = 1u;
         c.limbs[0] = 1u;
     }
-
-    //for (var i = 0u; i < {{ num_limbs }}u; i ++) {
-    //    c.limbs[i] = result.limbs[i];
-    //}
 }
 
 @compute
