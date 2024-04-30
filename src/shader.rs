@@ -61,3 +61,30 @@ pub fn render_tests(
     let template = env.get_template(template_file).unwrap();
     do_render(p, log_limb_size, &template)
 }
+
+pub fn render_curve_tests(
+    template_path: &str,
+    template_file: &str,
+    p: &BigUint,
+    log_limb_size: u32,
+) -> String {
+    let mut env = Environment::new();
+
+    let source = read_from_file(template_path, "bigint.wgsl");
+    env.add_template("bigint.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ff.wgsl");
+    env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "curve.wgsl");
+    env.add_template("curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render(p, log_limb_size, &template)
+}

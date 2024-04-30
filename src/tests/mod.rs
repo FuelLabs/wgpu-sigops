@@ -5,6 +5,8 @@ use multiprecision::bigint;
 pub mod bigint_and_ff;
 #[cfg(test)]
 pub mod mont;
+#[cfg(test)]
+pub mod curve;
 
 use crate::shader::render_tests;
 use crate::gpu::{
