@@ -27,3 +27,23 @@ fn test_jacobian_dbl_2009_l(@builtin(global_invocation_id) global_id: vec3<u32>)
     var result_pt = jacobian_dbl_2009_l(&a_pt, &p_bigint);
     result = result_pt;
 }
+
+@compute
+@workgroup_size(1)
+fn test_projective_add_2007_bl_unsafe(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p_bigint = p;
+    var a_pt = a;
+    var b_pt = b;
+    var result_pt = projective_add_2007_bl_unsafe(&a_pt, &b_pt, &p_bigint);
+    result = result_pt;
+}
+
+@compute
+@workgroup_size(1)
+fn test_projective_dbl_2007_bl_unsafe(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p_bigint = p;
+    var a_pt = a;
+    var b_pt = b;
+    var result_pt = projective_dbl_2007_bl_unsafe(&a_pt, &p_bigint);
+    result = result_pt;
+}

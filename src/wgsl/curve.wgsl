@@ -4,6 +4,86 @@ struct Point {
     z: BigInt
 }
 
+fn projective_add_2007_bl_unsafe(
+    a: ptr<function, Point>,
+    b: ptr<function, Point>,
+    p: ptr<function, BigInt>
+) -> Point {
+    var x1 = (*a).x;
+    var y1 = (*a).y;
+    var z1 = (*a).z;
+    var x2 = (*b).x;
+    var y2 = (*b).y;
+    var z2 = (*b).z;
+
+    var u1 = mont_mul(&x1, &z2, p);
+    var u2 = mont_mul(&x2, &z1, p);
+    var s1 = mont_mul(&y1, &z2, p);
+    var s2 = mont_mul(&y2, &z1, p);
+    var zz = mont_mul(&z1, &z2, p);
+    var t = ff_add(&u1, &u2, p);
+    var tt = mont_mul(&t, &t, p);
+    var m = ff_add(&s1, &s2, p);
+    var u1u2 = mont_mul(&u1, &u2, p);
+    var r = ff_sub(&tt, &u1u2, p);
+    var f = mont_mul(&zz, &m, p);
+    var l = mont_mul(&m, &f, p);
+    var ll = mont_mul(&l, &l, p);
+    var ttll = ff_add(&tt, &ll, p);
+    var tl = ff_add(&t, &l, p);
+    var tl2 = mont_mul(&tl, &tl, p);
+    var g = ff_sub(&tl2, &ttll, p);
+    var r2 = mont_mul(&r, &r, p);
+    var r22 = ff_add(&r2, &r2, p);
+    var w = ff_sub(&r22, &g, p);
+    var f2 = ff_add(&f, &f, p);
+    var x3 = mont_mul(&f2, &w, p);
+    var ll2 = ff_add(&ll, &ll, p);
+    var w2 = ff_add(&w, &w, p);
+    var g2w = ff_sub(&g, &w2, p);
+    var rg2w = mont_mul(&r, &g2w, p);
+    var y3 = ff_sub(&rg2w, &ll2, p);
+    var ff = mont_mul(&f, &f, p);
+    var f4 = ff_add(&f2, &f2, p);
+    var z3 = mont_mul(&f4, &ff, p);
+
+    return Point(x3, y3, z3);
+}
+
+fn projective_dbl_2007_bl_unsafe(
+    pt: ptr<function, Point>,
+    p: ptr<function, BigInt>
+) -> Point {
+    var x1 = (*pt).x;
+    var y1 = (*pt).y;
+    var z1 = (*pt).z;
+
+    var xx = mont_mul(&x1, &x1, p);
+    var xx2 = ff_add(&xx, &xx, p);
+    var w = ff_add(&xx2, &xx, p);
+    var y1z1 = mont_mul(&y1, &z1, p);
+    var s = ff_add(&y1z1, &y1z1, p);
+    var ss = mont_mul(&s, &s, p);
+    var sss = mont_mul(&s, &ss, p);
+    var r = mont_mul(&y1, &s, p);
+    var rr = mont_mul(&r, &r, p);
+    var xxrr = ff_add(&xx, &rr, p);
+    var x1r = ff_add(&x1, &r, p);
+    var x1r2 = mont_mul(&x1r, &x1r, p);
+    var b = ff_sub(&x1r2, &xxrr, p);
+    var b2 = ff_add(&b, &b, p);
+    var w2 = mont_mul(&w, &w, p);
+    var h = ff_sub(&w2, &b2, p);
+    var x3 = mont_mul(&h, &s, p);
+    var rr2 = ff_add(&rr, &rr, p);
+    var bh = ff_sub(&b, &h, p);
+    var wbh = mont_mul(&w, &bh, p);
+    var y3 = ff_sub(&wbh, &rr2, p);
+    var z3 = sss;
+
+    return Point(x3, y3, z3);
+}
+
 fn jacobian_add_2007_bl_unsafe(
     a: ptr<function, Point>,
     b: ptr<function, Point>,
