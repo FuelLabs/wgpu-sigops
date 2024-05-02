@@ -120,3 +120,46 @@ fn bigint_wide_gte(
     }
     return true;
 }
+
+fn bigint_is_even(
+    val: ptr<function, BigInt>
+) -> bool {
+    return (*val).limbs[0] % 2u == 0u;
+}
+
+fn bigint_is_one(
+    val: ptr<function, BigInt>
+) -> bool {
+    if ((*val).limbs[0] != 1u) {
+        return false;
+    }
+
+    for (var i: u32  = 1u; i < {{ num_limbs }}u; i ++) {
+        if ((*val).limbs[i] != 0u) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+fn bigint_div2(
+    v: ptr<function, BigInt>
+) -> BigInt {
+    var result: BigInt;
+
+    var rem = 0u;
+
+    let m = {{ two_pow_word_size }}u;
+
+    for (var idx: u32 = 0u; idx < {{ num_limbs }}u; idx ++) {
+        var i = {{ num_limbs }}u - idx - 1u;
+
+        var d = (*v).limbs[i] + rem * m;
+        var q = d / 2u;
+        rem = d % 2u;
+        result.limbs[i] = q;
+    }
+
+    return result;
+}

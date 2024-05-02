@@ -94,7 +94,7 @@ fn test_bigint_wide_gte(@builtin(global_invocation_id) global_id: vec3<u32>) {
 @compute
 @workgroup_size(1)
 fn test_ff_add(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    var p_bigint = p; // Must be present or else wgpu cannot autogenerate the bind group layout 
+    var p_bigint = p;
     var a_bigint = a;
     var b_bigint = b;
     var result: BigInt = ff_add(&a_bigint, &b_bigint, &p_bigint);
@@ -107,7 +107,7 @@ fn test_ff_add(@builtin(global_invocation_id) global_id: vec3<u32>) {
 @compute
 @workgroup_size(1)
 fn test_ff_sub(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    var p_bigint = p; // Must be present or else wgpu cannot autogenerate the bind group layout 
+    var p_bigint = p;
     var a_bigint = a;
     var b_bigint = b;
     var result: BigInt = ff_sub(&a_bigint, &b_bigint, &p_bigint);
@@ -120,10 +120,36 @@ fn test_ff_sub(@builtin(global_invocation_id) global_id: vec3<u32>) {
 @compute
 @workgroup_size(1)
 fn test_mont_mul(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    var p_bigint = p; // Must be present or else wgpu cannot autogenerate the bind group layout 
+    var p_bigint = p;
     var a_bigint = a;
     var b_bigint = b;
     var result: BigInt = mont_mul(&a_bigint, &b_bigint, &p_bigint);
+
+    for (var i = 0u; i < {{ num_limbs }}u; i ++) {
+        c.limbs[i] = result.limbs[i];
+    }
+}
+
+@compute
+@workgroup_size(1)
+fn test_ff_inverse(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p_bigint = p;
+    var a_bigint = a;
+    var b_bigint = b; // Must be present or else wgpu cannot autogenerate the bind group layout 
+    var result: BigInt = ff_inverse(&a_bigint, &p_bigint);
+
+    for (var i = 0u; i < {{ num_limbs }}u; i ++) {
+        c.limbs[i] = result.limbs[i];
+    }
+}
+
+@compute
+@workgroup_size(1)
+fn test_bigint_div_2(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p_bigint = p; // Must be present or else wgpu cannot autogenerate the bind group layout 
+    var a_bigint = a;
+    var b_bigint = b; // Must be present or else wgpu cannot autogenerate the bind group layout 
+    var result: BigInt = bigint_div2(&a_bigint);
 
     for (var i = 0u; i < {{ num_limbs }}u; i ++) {
         c.limbs[i] = result.limbs[i];

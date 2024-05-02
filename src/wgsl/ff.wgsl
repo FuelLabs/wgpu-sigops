@@ -46,3 +46,67 @@ fn ff_sub(
         return bigint_sub(p, &r);
     }
 }
+
+// From "Efficient Software-Implementation of Finite Fields with Applications
+// to Cryptography" by Guajardo, et al, Algorithm 16
+// https://www.sandeep.de/my/papers/2006_ActaApplMath_EfficientSoftFiniteF.pdf
+fn ff_inverse(
+    x: ptr<function, BigInt>,
+    p: ptr<function, BigInt>,
+) -> BigInt {
+    var c: BigInt;
+    var b: BigInt;
+    b.limbs[0] = 1u;
+
+    var u: BigInt;
+    var v: BigInt;
+    for (var i = 0u; i < {{ num_limbs }}u; i ++) {
+        u.limbs[i] = (*x).limbs[i];
+        v.limbs[i] = (*p).limbs[i];
+    }
+
+    while (!bigint_is_one(&u) && !bigint_is_one(&v)) {
+        while (bigint_is_even(&u)) {
+            u = bigint_div2(&u);
+
+            if (bigint_is_even(&b)) {
+                b = bigint_div2(&b);
+            } else {
+                var bp = bigint_add_unsafe(&b, p);
+                b = bigint_div2(&bp);
+            }
+        }
+
+        while (bigint_is_even(&v)) {
+            v = bigint_div2(&v);
+
+            if (bigint_is_even(&c)) {
+                c = bigint_div2(&c);
+            } else {
+                var cp = bigint_add_unsafe(&c, p);
+                c = bigint_div2(&cp);
+            }
+        }
+
+        if (bigint_gte(&u, &v)) {
+            u = ff_sub(&u, &v, p);
+            b = ff_sub(&b, &c, p);
+        } else {
+            v = ff_sub(&v, &u, p);
+            c = ff_sub(&c, &b, p);
+        }
+    }
+
+    var result: BigInt;
+    if (bigint_is_one(&u)) {
+        result = b;
+    } else {
+        result = c;
+    }
+
+    if bigint_gte(&result, p) {
+        result = bigint_sub(&result, p);
+    }
+
+    return result;
+}

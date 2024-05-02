@@ -15,12 +15,103 @@ use multiprecision::utils::calc_num_limbs;
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
+use ark_secp256k1::Fq;
+use ark_ff::{ Field, PrimeField, BigInteger };
 use crate::tests::do_test;
 
 const NUM_RUNS_PER_TEST: usize = 8;
 
 fn gen_rng() -> ChaCha8Rng {
     ChaCha8Rng::seed_from_u64(2)
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn test_bigint_div2() {
+    let mut rng = gen_rng();
+    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
+    for log_limb_size in 11..16 {
+        let num_limbs = calc_num_limbs(log_limb_size, 256);
+
+        for _ in 0..10 {
+            let mut a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+
+            if &a % BigUint::from(2u32) != BigUint::from(0u32) {
+                a += BigUint::from(1u32);
+            }
+            let expected = &a / BigUint::from(2u32);
+
+            do_expected_test(&a, &p, &expected, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_bigint_div_2").await;
+        }
+    }
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn test_ff_inverse() {
+    let mut rng = gen_rng();
+    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
+    for log_limb_size in 11..16 {
+        let num_limbs = calc_num_limbs(log_limb_size, 256);
+
+        for _ in 0..10 {
+            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+
+            let expected = Fq::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap();
+            let expected = BigUint::from_bytes_be(&expected.into_bigint().to_bytes_be()) % &p;
+
+            do_expected_test(&a, &p, &expected, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_ff_inverse").await;
+        }
+    }
+}
+
+pub async fn do_expected_test(
+    a: &BigUint,
+    p: &BigUint,
+    expected: &BigUint,
+    log_limb_size: u32,
+    num_limbs: usize,
+    filename: &str,
+    entrypoint: &str,
+) {
+    let p_limbs = bigint::from_biguint_le(p, num_limbs, log_limb_size);
+    let a_limbs = bigint::from_biguint_le(a, num_limbs, log_limb_size);
+
+    let (device, queue) = get_device_and_queue().await;
+
+    let a_buf = create_sb_with_data(&device, &a_limbs);
+    let b_buf = create_empty_sb(&device, a_buf.size());
+    let result_buf = create_empty_sb(&device, a_buf.size() + 4);
+    let p_buf = create_sb_with_data(&device, &p_limbs);
+
+    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&a_buf, &b_buf, &p_buf, &result_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf],
+    ).await;
+
+    let result = bigint::to_biguint_le(
+        &results[0][0..num_limbs].to_vec(),
+        num_limbs,
+        log_limb_size,
+    );
+
+    assert_eq!(&result, expected);
 }
 
 #[serial_test::serial]
