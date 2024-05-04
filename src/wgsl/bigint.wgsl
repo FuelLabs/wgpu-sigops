@@ -127,6 +127,17 @@ fn bigint_is_even(
     return (*val).limbs[0] % 2u == 0u;
 }
 
+fn bigint_is_zero(
+    val: ptr<function, BigInt>
+) -> bool {
+    for (var i: u32 = 0u; i < {{ num_limbs }}u; i ++) {
+        if ((*val).limbs[i] != 0u) {
+            return false;
+        }
+    }
+
+    return true;
+}
 fn bigint_is_one(
     val: ptr<function, BigInt>
 ) -> bool {

@@ -2,16 +2,33 @@ use minijinja::{Environment, Template, context};
 use std::path::PathBuf;
 use num_bigint::BigUint;
 use multiprecision::utils::calc_num_limbs;
-use multiprecision::mont;
+use multiprecision::{ bigint, mont };
 
 fn read_from_file(
     path: &str,
     file: &str,
 ) -> String {
-    let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join(path)
-        .join(file);
+    let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path).join(file);
     std::fs::read_to_string(&input_path).unwrap()
+}
+
+pub fn gen_r_bigint(
+    r: &BigUint,
+    num_limbs: usize,
+    log_limb_size: u32
+) -> String {
+    let r_limbs = bigint::from_biguint_le(r, num_limbs, log_limb_size);
+    let mut result = format!("var r: BigInt = BigInt(array<u32, {}>(", num_limbs).to_owned();
+
+    for i in 0..num_limbs {
+        result.push_str(format!("{}u", r_limbs[i]).as_str());
+        if i < num_limbs - 1 {
+            result.push_str(", ");
+        }
+    }
+
+    result.push_str("));");
+    result
 }
 
 pub fn do_render(
@@ -27,6 +44,8 @@ pub fn do_render(
     let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
     let n0 = res.1;
 
+    let r_bigint = gen_r_bigint(&(r % p), num_limbs, log_limb_size);
+
     let context = context! {
         num_limbs => num_limbs,
         log_limb_size => log_limb_size,
@@ -34,6 +53,7 @@ pub fn do_render(
         mask => mask,
         nsafe => nsafe,
         n0 => n0,
+        r_bigint => r_bigint,
     };
     template.render(context).unwrap()
 }

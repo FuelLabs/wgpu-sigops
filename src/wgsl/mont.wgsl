@@ -8,7 +8,6 @@ fn mont_mul(
     p: ptr<function, BigInt>
 ) -> BigInt {
     var s: BigInt;
-
     // -------------------------------------------------------------------------------------------
     {% if log_limb_size > 10 and log_limb_size < 14 %}
     for (var i = 0u; i < {{ num_limbs }}u; i ++) {
@@ -34,7 +33,6 @@ fn mont_mul(
         c = v >> {{ log_limb_size }}u;
         s.limbs[i] = v & {{ mask }}u;
     }
-
     // -------------------------------------------------------------------------------------------
     {% elif log_limb_size > 13 and log_limb_size < 16 %}
     for (var i = 0u; i < {{ num_limbs }}u; i ++) {
@@ -68,7 +66,6 @@ fn mont_mul(
         s.limbs[i] = v & {{ mask }}u;
     }
     {% endif %}
-
     return conditional_reduce(&s, p);
 }
 
@@ -78,4 +75,41 @@ fn conditional_reduce(x: ptr<function, BigInt>, y: ptr<function, BigInt>) -> Big
     }
 
     return *x;
+}
+
+struct SqrtResult {
+    a: BigInt,
+    b: BigInt
+}
+
+fn mont_sqrt_case3mod4(
+    xr: ptr<function, BigInt>,
+    exponent: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> SqrtResult {
+    {{ r_bigint }}
+    var a = modpow(xr, &r, exponent, p);
+    var b = ff_sub(p, &a, p);
+    return SqrtResult(a, b);
+}
+
+fn modpow(
+    xr: ptr<function, BigInt>,
+    r: ptr<function, BigInt>,
+    exponent: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> BigInt {
+    var result = *r;
+    var temp = *xr;
+    var s = *exponent;
+
+    while (!bigint_is_zero(&s)) {
+        if (!bigint_is_even(&s)) {
+            result = mont_mul(&result, &temp, p);
+        }
+        temp = mont_mul(&temp, &temp, p);
+        s = bigint_div2(&s);
+    }
+
+    return result;
 }

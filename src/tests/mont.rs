@@ -85,7 +85,7 @@ pub async fn mont_mul() {
             let ar = &a * &r % &p;
             let br = &b * &r % &p;
 
-            do_mont_test(&ar, &br, &p, &r, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_mont_mul").await;
+            do_mont_test(&ar, &br, &p, &r, log_limb_size, num_limbs, "mont_tests.wgsl", "test_mont_mul").await;
         }
     }
 }
@@ -231,4 +231,93 @@ pub async fn do_mont_benchmark(
     assert_eq!(result, expected);
 
     elapsed as u32
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn mont_sqrt_case3mod4() {
+    // Given xr, find sqrt(x)r
+    // Note that sqrt(xy) = sqrt(x) * sqrt(y)
+    //
+    // sqrt(xr) = sqrt(x) * sqrt(r)
+    // sqrt(x)r = sqrt(xr) * sqrt(r)
+    //          = sqrt(x) * sqrt(r) * sqrt(r)
+    //          = sqrt(x)r
+    let mut rng = gen_rng();
+
+    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
+
+    for log_limb_size in 11..16 {
+        for _ in 0..10 {
+            let num_limbs = calc_num_limbs(log_limb_size, 256);
+            let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+            let x: BigUint = &s * &s % &p;
+
+            do_mont_sqrt_case3mod4_test(&x, &p, &r, log_limb_size, num_limbs, "mont_sqrt_case3mod4_tests.wgsl", "test_mont_sqrt_case3mod4").await
+        }
+    }
+}
+
+pub async fn do_mont_sqrt_case3mod4_test(
+    x: &BigUint,
+    p: &BigUint,
+    r: &BigUint,
+    log_limb_size: u32,
+    num_limbs: usize,
+    filename: &str,
+    entrypoint: &str,
+) {
+    let exponent = (p + BigUint::from(1u32)) / BigUint::from(4u32);
+    let xr = x * r % p;
+    let expected_a = x.modpow(&exponent, p) * r % p;
+    let expected_b = p - &expected_a % p;
+
+    let p_limbs = bigint::from_biguint_le(p, num_limbs, log_limb_size);
+    let xr_limbs = bigint::from_biguint_le(&xr, num_limbs, log_limb_size);
+    let exponent_limbs = bigint::from_biguint_le(&exponent, num_limbs, log_limb_size);
+
+    let (device, queue) = get_device_and_queue().await;
+
+    let xr_buf = create_sb_with_data(&device, &xr_limbs);
+    let exponent_buf = create_sb_with_data(&device, &exponent_limbs);
+    let p_buf = create_sb_with_data(&device, &p_limbs);
+    let result_a_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
+    let result_b_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
+
+    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&xr_buf, &exponent_buf, &p_buf, &result_a_buf, &result_b_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_a_buf, result_b_buf],
+    ).await;
+
+    let result_a = bigint::to_biguint_le(
+        &results[0][0..num_limbs].to_vec(),
+        num_limbs,
+        log_limb_size,
+    );
+    let result_b = bigint::to_biguint_le(
+        &results[1][0..num_limbs].to_vec(),
+        num_limbs,
+        log_limb_size,
+    );
+
+    assert!(result_a == expected_a || result_a == expected_b);
+    assert!(result_b == expected_b || result_b == expected_a);
 }
