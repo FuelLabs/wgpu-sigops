@@ -20,6 +20,11 @@ use crate::gpu::{
     finish_encoder_and_read_from_gpu,
 };
 
+pub fn get_secp256k1_b() -> BigUint {
+    BigUint::from(7u32)
+}
+
+
 pub async fn do_test(
     a: BigUint,
     b: BigUint,
@@ -46,9 +51,8 @@ pub async fn do_test(
     let a_buf = create_sb_with_data(&device, &a_limbs);
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (result_len * 8 * std::mem::size_of::<u8>()) as u64);
-    let p_buf = create_sb_with_data(&device, &p_limbs);
 
-    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -57,7 +61,7 @@ pub async fn do_test(
         &device,
         &compute_pipeline,
         0,
-        &[&a_buf, &b_buf, &p_buf, &result_buf],
+        &[&a_buf, &b_buf, &result_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);

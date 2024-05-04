@@ -77,20 +77,15 @@ fn conditional_reduce(x: ptr<function, BigInt>, y: ptr<function, BigInt>) -> Big
     return *x;
 }
 
-struct SqrtResult {
-    a: BigInt,
-    b: BigInt
-}
-
 fn mont_sqrt_case3mod4(
     xr: ptr<function, BigInt>,
-    exponent: ptr<function, BigInt>,
     p: ptr<function, BigInt>
-) -> SqrtResult {
-    {{ r_bigint }}
-    var a = modpow(xr, &r, exponent, p);
+) -> array<BigInt, 2> {
+    var exponent = get_sqrt_case3mod4_exponent();
+    var r = get_r();
+    var a = modpow(xr, &r, &exponent, p);
     var b = ff_sub(p, &a, p);
-    return SqrtResult(a, b);
+    return array(a, b);
 }
 
 fn modpow(

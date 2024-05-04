@@ -12,13 +12,14 @@ fn read_from_file(
     std::fs::read_to_string(&input_path).unwrap()
 }
 
-pub fn gen_r_bigint(
-    r: &BigUint,
+pub fn gen_constant_bigint(
+    var_name: &str,
+    val: &BigUint,
     num_limbs: usize,
     log_limb_size: u32
 ) -> String {
-    let r_limbs = bigint::from_biguint_le(r, num_limbs, log_limb_size);
-    let mut result = format!("var r: BigInt = BigInt(array<u32, {}>(", num_limbs).to_owned();
+    let r_limbs = bigint::from_biguint_le(val, num_limbs, log_limb_size);
+    let mut result = format!("var {}: BigInt = BigInt(array<u32, {}>(", var_name, num_limbs).to_owned();
 
     for i in 0..num_limbs {
         result.push_str(format!("{}u", r_limbs[i]).as_str());
@@ -33,6 +34,7 @@ pub fn gen_r_bigint(
 
 pub fn do_render(
     p: &BigUint,
+    b: &BigUint,
     log_limb_size: u32,
     template: &Template,
 ) -> String {
@@ -44,7 +46,14 @@ pub fn do_render(
     let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
     let n0 = res.1;
 
-    let r_bigint = gen_r_bigint(&(r % p), num_limbs, log_limb_size);
+    let r_bigint = gen_constant_bigint("r", &(&r % p), num_limbs, log_limb_size);
+    let p_bigint = gen_constant_bigint("p", p, num_limbs, log_limb_size);
+
+    let br = b * &r % p;
+    let br_bigint = gen_constant_bigint("br", &br, num_limbs, log_limb_size);
+
+    let sqrt_case3mod4_exponent = (p + BigUint::from(1u32)) / BigUint::from(4u32);
+    let sqrt_case3mod4_exponent_bigint = gen_constant_bigint("sqrt_case3mod4_exponent", &sqrt_case3mod4_exponent, num_limbs, log_limb_size);
 
     let context = context! {
         num_limbs => num_limbs,
@@ -54,6 +63,9 @@ pub fn do_render(
         nsafe => nsafe,
         n0 => n0,
         r_bigint => r_bigint,
+        p_bigint => p_bigint,
+        br_bigint => br_bigint,
+        sqrt_case3mod4_exponent_bigint => sqrt_case3mod4_exponent_bigint,
     };
     template.render(context).unwrap()
 }
@@ -62,6 +74,7 @@ pub fn render_tests(
     template_path: &str,
     template_file: &str,
     p: &BigUint,
+    b: &BigUint,
     log_limb_size: u32,
 ) -> String {
     let mut env = Environment::new();
@@ -75,17 +88,21 @@ pub fn render_tests(
     let source = read_from_file(template_path, "mont.wgsl");
     env.add_template("mont.wgsl", &source).unwrap();
 
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
 
     let template = env.get_template(template_file).unwrap();
-    do_render(p, log_limb_size, &template)
+    do_render(p, b, log_limb_size, &template)
 }
 
 pub fn render_curve_tests(
     template_path: &str,
     template_file: &str,
     p: &BigUint,
+    b: &BigUint,
     log_limb_size: u32,
 ) -> String {
     let mut env = Environment::new();
@@ -102,9 +119,12 @@ pub fn render_curve_tests(
     let source = read_from_file(template_path, "curve.wgsl");
     env.add_template("curve.wgsl", &source).unwrap();
 
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
 
     let template = env.get_template(template_file).unwrap();
-    do_render(p, log_limb_size, &template)
+    do_render(p, b, log_limb_size, &template)
 }

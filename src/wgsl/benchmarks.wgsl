@@ -1,17 +1,17 @@
 {% include "bigint.wgsl" %}
 {% include "ff.wgsl" %}
 {% include "mont.wgsl" %}
+{% include "constants.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> ar: BigInt;
 @group(0) @binding(1) var<storage, read_write> br: BigInt;
-@group(0) @binding(2) var<storage, read_write> p: BigInt;
-@group(0) @binding(3) var<storage, read_write> cr: BigInt;
-@group(0) @binding(4) var<storage, read_write> cost: u32;
+@group(0) @binding(2) var<storage, read_write> cr: BigInt;
+@group(0) @binding(3) var<storage, read_write> cost: u32;
 
 @compute
 @workgroup_size(1)
 fn benchmark_mont_mul(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    var p_bigint = p; // Must be present or else wgpu cannot autogenerate the bind group layout 
+    var p_bigint = get_p();
     var ar_bigint = ar;
     var br_bigint = br;
     var result: BigInt = ar_bigint;

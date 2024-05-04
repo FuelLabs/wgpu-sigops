@@ -159,3 +159,17 @@ fn jacobian_dbl_2009_l(
 
     return Point(x3, y3, z3);
 }
+
+fn recover_affine_ys_a0(
+    xr: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> array<BigInt, 2> {
+    // Assumes that a = 0
+    var xr_squared = mont_mul(xr, xr, p);
+    var xr_cubed = mont_mul(&xr_squared, xr, p);
+
+    var br = get_br();
+    var xr_cubed_plus_b = ff_add(&xr_cubed, &br, p);
+
+    return mont_sqrt_case3mod4(&xr_cubed_plus_b, p);
+}

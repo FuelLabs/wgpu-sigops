@@ -17,6 +17,7 @@ use crate::gpu::{
     finish_encoder_and_read_from_gpu,
 };
 use crate::shader::render_tests;
+use crate::tests::get_secp256k1_b;
 
 fn gen_rng() -> ChaCha8Rng {
     ChaCha8Rng::seed_from_u64(2)
@@ -126,9 +127,8 @@ pub async fn do_mont_test(
     let a_buf = create_sb_with_data(&device, &ar_limbs);
     let b_buf = create_sb_with_data(&device, &br_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
-    let p_buf = create_sb_with_data(&device, &p_limbs);
 
-    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -137,7 +137,7 @@ pub async fn do_mont_test(
         &device,
         &compute_pipeline,
         0,
-        &[&a_buf, &b_buf, &p_buf, &result_buf],
+        &[&a_buf, &b_buf, &result_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
@@ -187,7 +187,6 @@ pub async fn do_mont_benchmark(
     let rinv = res.0;
 
     let expected = expensive_computation(&ar, &br, &p, &rinv, cost);
-    let p_limbs = bigint::from_biguint_le(&p, num_limbs, log_limb_size);
     let ar_limbs = bigint::from_biguint_le(&ar, num_limbs, log_limb_size);
     let br_limbs = bigint::from_biguint_le(&br, num_limbs, log_limb_size);
 
@@ -196,10 +195,9 @@ pub async fn do_mont_benchmark(
     let a_buf = create_sb_with_data(&device, &ar_limbs);
     let b_buf = create_sb_with_data(&device, &br_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
-    let p_buf = create_sb_with_data(&device, &p_limbs);
     let cost_buf = create_sb_with_data(&device, &[cost]);
 
-    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -208,7 +206,7 @@ pub async fn do_mont_benchmark(
         &device,
         &compute_pipeline,
         0,
-        &[&a_buf, &b_buf, &p_buf, &result_buf, &cost_buf],
+        &[&a_buf, &b_buf, &result_buf, &cost_buf],
     );
 
     let sw = Stopwatch::start_new();
@@ -274,19 +272,15 @@ pub async fn do_mont_sqrt_case3mod4_test(
     let expected_a = x.modpow(&exponent, p) * r % p;
     let expected_b = p - &expected_a % p;
 
-    let p_limbs = bigint::from_biguint_le(p, num_limbs, log_limb_size);
     let xr_limbs = bigint::from_biguint_le(&xr, num_limbs, log_limb_size);
-    let exponent_limbs = bigint::from_biguint_le(&exponent, num_limbs, log_limb_size);
 
     let (device, queue) = get_device_and_queue().await;
 
     let xr_buf = create_sb_with_data(&device, &xr_limbs);
-    let exponent_buf = create_sb_with_data(&device, &exponent_limbs);
-    let p_buf = create_sb_with_data(&device, &p_limbs);
     let result_a_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
     let result_b_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -295,7 +289,7 @@ pub async fn do_mont_sqrt_case3mod4_test(
         &device,
         &compute_pipeline,
         0,
-        &[&xr_buf, &exponent_buf, &p_buf, &result_a_buf, &result_b_buf],
+        &[&xr_buf, &result_a_buf, &result_b_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);

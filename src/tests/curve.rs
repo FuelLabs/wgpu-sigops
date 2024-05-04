@@ -17,6 +17,7 @@ use crate::gpu::{
     create_compute_pipeline,
     finish_encoder_and_read_from_gpu,
 };
+use crate::tests::get_secp256k1_b;
 
 pub fn fq_to_biguint(val: Fq) -> BigUint {
     let b = val.into_bigint().to_bytes_be();
@@ -113,7 +114,6 @@ pub async fn do_add_test(
     let b_y_r = fq_to_biguint(b.y) * &r % &p;
     let b_z_r = fq_to_biguint(b.z) * &r % &p;
 
-    let p_limbs = bigint::from_biguint_le(&p, num_limbs, log_limb_size);
     let a_x_r_limbs = bigint::from_biguint_le(&a_x_r, num_limbs, log_limb_size);
     let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
     let a_z_r_limbs = bigint::from_biguint_le(&a_z_r, num_limbs, log_limb_size);
@@ -140,12 +140,11 @@ pub async fn do_add_test(
    pt_b_limbs.extend_from_slice(&b_y_r_limbs);
    pt_b_limbs.extend_from_slice(&b_z_r_limbs);
 
-   let p_buf = create_sb_with_data(&device, &p_limbs);
    let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
    let pt_b_buf = create_sb_with_data(&device, &pt_b_limbs);
    let result_buf = create_empty_sb(&device, pt_a_buf.size());
 
-   let source = render_curve_tests("src/wgsl/", filename, &p, log_limb_size);
+   let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
    let mut command_encoder = create_command_encoder(&device);
@@ -154,7 +153,7 @@ pub async fn do_add_test(
        &device,
        &compute_pipeline,
        0,
-       &[&p_buf, &pt_a_buf, &pt_b_buf, &result_buf],
+       &[&pt_a_buf, &pt_b_buf, &result_buf],
    );
 
    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
@@ -195,7 +194,6 @@ pub async fn do_dbl_test(
     let a_y_r = fq_to_biguint(a.y) * &r % &p;
     let a_z_r = fq_to_biguint(a.z) * &r % &p;
 
-    let p_limbs = bigint::from_biguint_le(&p, num_limbs, log_limb_size);
     let a_x_r_limbs = bigint::from_biguint_le(&a_x_r, num_limbs, log_limb_size);
     let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
     let a_z_r_limbs = bigint::from_biguint_le(&a_z_r, num_limbs, log_limb_size);
@@ -213,12 +211,11 @@ pub async fn do_dbl_test(
    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
    pt_a_limbs.extend_from_slice(&a_z_r_limbs);
 
-   let p_buf = create_sb_with_data(&device, &p_limbs);
    let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
    let pt_b_buf = create_empty_sb(&device, pt_a_buf.size());
    let result_buf = create_empty_sb(&device, pt_a_buf.size());
 
-   let source = render_curve_tests("src/wgsl/", filename, &p, log_limb_size);
+   let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
    let mut command_encoder = create_command_encoder(&device);
@@ -227,7 +224,7 @@ pub async fn do_dbl_test(
        &device,
        &compute_pipeline,
        0,
-       &[&p_buf, &pt_a_buf, &pt_b_buf, &result_buf],
+       &[&pt_a_buf, &pt_b_buf, &result_buf],
    );
 
    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
@@ -252,4 +249,75 @@ pub async fn do_dbl_test(
     let result_affine = to_affine_func(result_x, result_y, result_z);
 
     assert_eq!(result_affine, expected_sum_affine);
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn recover_affine_ys() {
+    let g = Affine::generator();
+
+    let a: Affine = g.mul(Fr::from(2u32)).into_affine();
+
+    for log_limb_size in 13..14 {
+        do_recover_affine_ys_test(&a, log_limb_size, "curve_recover_affine_ys_tests.wgsl", "test_recover_affine_ys").await;
+    }
+}
+
+pub async fn do_recover_affine_ys_test(
+    a: &Affine,
+    log_limb_size: u32,
+    filename: &str,
+    entrypoint: &str,
+) {
+    let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let xr = fq_to_biguint(a.x) * &r % &p;
+
+    let xr_limbs = bigint::from_biguint_le(&xr, num_limbs, log_limb_size);
+
+   let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+   let rinv = res.0;
+
+   let (device, queue) = get_device_and_queue().await;
+
+   let xr_buf = create_sb_with_data(&device, &xr_limbs);
+   let result_0_buf = create_empty_sb(&device, xr_buf.size());
+   let result_1_buf = create_empty_sb(&device, xr_buf.size());
+
+   let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+   let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+   let mut command_encoder = create_command_encoder(&device);
+
+   let bind_group = create_bind_group(
+       &device,
+       &compute_pipeline,
+       0,
+       &[&xr_buf, &result_0_buf, &result_1_buf],
+   );
+
+   execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_0_buf, result_1_buf],
+    ).await;
+
+    let convert_result_coord = |data: &Vec<u32>| -> Fq {
+        let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        let result = &result_x_r * &rinv % &p;
+
+        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
+    };
+
+    let result_y_0 = convert_result_coord(&results[0][0..num_limbs].to_vec());
+    let result_y_1 = convert_result_coord(&results[1][0..num_limbs].to_vec());
+
+    let expected_ys = Affine::get_ys_from_x_unchecked(a.x).unwrap();
+
+    assert!(result_y_0 == expected_ys.0 || result_y_0 == expected_ys.1);
+    assert!(result_y_1 == expected_ys.0 || result_y_1 == expected_ys.1);
 }

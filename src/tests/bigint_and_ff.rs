@@ -17,7 +17,7 @@ use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
 use ark_secp256k1::Fq;
 use ark_ff::{ Field, PrimeField, BigInteger };
-use crate::tests::do_test;
+use crate::tests::{ get_secp256k1_b, do_test };
 
 const NUM_RUNS_PER_TEST: usize = 8;
 
@@ -74,7 +74,6 @@ pub async fn do_expected_test(
     filename: &str,
     entrypoint: &str,
 ) {
-    let p_limbs = bigint::from_biguint_le(p, num_limbs, log_limb_size);
     let a_limbs = bigint::from_biguint_le(a, num_limbs, log_limb_size);
 
     let (device, queue) = get_device_and_queue().await;
@@ -82,9 +81,8 @@ pub async fn do_expected_test(
     let a_buf = create_sb_with_data(&device, &a_limbs);
     let b_buf = create_empty_sb(&device, a_buf.size());
     let result_buf = create_empty_sb(&device, a_buf.size() + 4);
-    let p_buf = create_sb_with_data(&device, &p_limbs);
 
-    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -93,7 +91,7 @@ pub async fn do_expected_test(
         &device,
         &compute_pipeline,
         0,
-        &[&a_buf, &b_buf, &p_buf, &result_buf],
+        &[&a_buf, &b_buf, &result_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
@@ -353,7 +351,6 @@ async fn do_bigint_wide_sub_test(
 ) {
     let expected = &a - &b;
     let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
-    let p_limbs = bigint::from_biguint_le(&p, num_limbs, log_limb_size);
     let a_limbs = bigint::from_biguint_le(&a, num_limbs, log_limb_size);
     let b_limbs = bigint::from_biguint_le(&b, num_limbs, log_limb_size);
     let expected_limbs = bigint::from_biguint_le(&expected, num_limbs, log_limb_size);
@@ -363,12 +360,11 @@ async fn do_bigint_wide_sub_test(
 
     let (device, queue) = get_device_and_queue().await;
 
-    let p_buf = create_sb_with_data(&device, &p_limbs);
     let a_buf = create_sb_with_data(&device, &a_limbs);
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -377,7 +373,7 @@ async fn do_bigint_wide_sub_test(
         &device,
         &compute_pipeline,
         0,
-        &[&a_buf, &b_buf, &p_buf, &result_buf],
+        &[&a_buf, &b_buf, &result_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
@@ -410,7 +406,6 @@ async fn do_bigint_wide_gte_test(
 ) {
     let expected = biguint_func(&a, &b);
     let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
-    let p_limbs = bigint::from_biguint_le(&p, num_limbs, log_limb_size);
     let a_limbs = bigint::from_biguint_le(&a, num_limbs, log_limb_size);
     let b_limbs = bigint::from_biguint_le(&b, num_limbs, log_limb_size);
     let expected_limbs = bigint::from_biguint_le(&expected, num_limbs, log_limb_size);
@@ -422,10 +417,9 @@ async fn do_bigint_wide_gte_test(
 
     let a_buf = create_sb_with_data(&device, &a_limbs);
     let b_buf = create_sb_with_data(&device, &b_limbs);
-    let p_buf = create_sb_with_data(&device, &p_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_tests("src/wgsl/", filename, &p, log_limb_size);
+    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -434,7 +428,7 @@ async fn do_bigint_wide_gte_test(
         &device,
         &compute_pipeline,
         0,
-        &[&a_buf, &b_buf, &p_buf, &result_buf],
+        &[&a_buf, &b_buf, &result_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
