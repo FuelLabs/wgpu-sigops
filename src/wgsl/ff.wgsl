@@ -110,3 +110,81 @@ fn ff_inverse(
 
     return result;
 }
+
+fn bigint_mul(a: ptr<function, BigInt>, b: ptr<function, BigInt>) -> BigIntWide {
+    var res: BigIntWide;
+    for (var i = 0u; i < {{ num_limbs }}u; i = i + 1u) {
+        for (var j = 0u; j < {{ num_limbs }}u; j = j + 1u) {
+            let c = (*a).limbs[i] * (*b).limbs[j];
+            res.limbs[i+j] += c & {{ mask }}u;
+            res.limbs[i+j+1] += c >> {{ log_limb_size }}u;
+        }   
+    }
+
+    /// Start from 0 and carry the extra over to the next index.
+    for (var i = 0u; i < 2 * {{ num_limbs }}u - 1; i = i + 1u) {
+        res.limbs[i+1] += res.limbs[i] >> {{ log_limb_size }}u;
+        res.limbs[i] = res.limbs[i] & {{ mask }}u;
+    }
+    return res;
+}
+
+fn sub_512(a: ptr<function, BigIntWide>, b: ptr<function, BigIntWide>, res: ptr<function, BigIntWide>) -> u32 {
+    var borrow = 0u;
+    for (var i = 0u; i < 2u * {{ num_limbs }}u; i = i + 1u) {
+        (*res).limbs[i] = (*a).limbs[i] - (*b).limbs[i] - borrow;
+        if ((*a).limbs[i] < ((*b).limbs[i] + borrow)) {
+            (*res).limbs[i] += {{ two_pow_word_size }}u;
+            borrow = 1u;
+        } else {
+            borrow = 0u;
+        }
+    }
+    return borrow;
+}
+
+fn get_higher_with_slack(a: ptr<function, BigIntWide>) -> BigInt {
+    var out: BigInt;
+    for (var i = 0u; i < {{ num_limbs }}u; i = i + 1u) {
+        out.limbs[i] = (
+            ((*a).limbs[i + {{ num_limbs }}u] << {{ slack }}u) +
+                ((*a).limbs[i + {{ num_limbs }}u - 1] >> 
+                ({{ log_limb_size }}u - {{ slack }}u))
+        ) & {{ mask }}u;
+    }
+    return out;
+}
+
+/*
+ * Returns lhs * rhs % p
+ */
+fn ff_mul(
+    a: ptr<function, BigInt>,
+    b: ptr<function, BigInt>,
+    p: ptr<function, BigInt>,
+    p_wide: ptr<function, BigIntWide>,
+    mu: ptr<function, BigInt>,
+) -> BigInt {
+    var xy: BigIntWide = bigint_mul(a, b);
+    var xy_hi: BigInt = get_higher_with_slack(&xy);
+    var l: BigIntWide = bigint_mul(&xy_hi, mu);
+    var l_hi: BigInt = get_higher_with_slack(&l);
+    var lp: BigIntWide = bigint_mul(&l_hi, p);
+    var r_wide: BigIntWide;
+    sub_512(&xy, &lp, &r_wide);
+
+    var r_wide_reduced: BigIntWide;
+    var underflow = sub_512(&r_wide, p_wide, &r_wide_reduced);
+    if (underflow == 0u) {
+        r_wide = r_wide_reduced;
+    }
+    var r: BigInt;
+    for (var i = 0u; i < {{ num_limbs }}u; i = i + 1u) {
+        r.limbs[i] = r_wide.limbs[i];
+    }
+
+    if (bigint_gte(&r, p)) {
+        return bigint_sub(&r, p);
+    }
+    return r;
+}

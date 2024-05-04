@@ -118,6 +118,23 @@ fn test_ff_sub(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
 @compute
 @workgroup_size(1)
+fn test_ff_mul(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p_bigint = get_p();
+    var a_bigint = a;
+    var b_bigint = b;
+
+    var p_wide = get_p_wide();
+    var mu = get_mu();
+
+    var result: BigInt = ff_mul(&a_bigint, &b_bigint, &p_bigint, &p_wide, &mu);
+
+    for (var i = 0u; i < {{ num_limbs }}u; i ++) {
+        c.limbs[i] = result.limbs[i];
+    }
+}
+
+@compute
+@workgroup_size(1)
 fn test_ff_inverse(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var p_bigint = get_p();
     var a_bigint = a;

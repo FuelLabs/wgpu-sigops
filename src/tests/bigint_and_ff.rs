@@ -163,6 +163,22 @@ pub async fn ff_sub() {
 
 #[serial_test::serial]
 #[tokio::test]
+pub async fn ff_mul() {
+    let mut rng = gen_rng();
+    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
+
+    for log_limb_size in 11..15 {
+        for _ in 0..NUM_RUNS_PER_TEST {
+            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+    
+            do_ff_mul_test(&a, &b, &p, log_limb_size, "bigint_and_ff_tests.wgsl", "test_ff_mul").await;
+        }
+    }
+}
+
+#[serial_test::serial]
+#[tokio::test]
 pub async fn bigint_wide_add() {
     let mut rng = gen_rng();
     let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
@@ -412,6 +428,55 @@ async fn do_bigint_wide_gte_test(
     let expected_limbs_2 = func(&a_limbs, &b_limbs, log_limb_size);
 
     assert!(bigint::eq(&expected_limbs, &expected_limbs_2));
+
+    let (device, queue) = get_device_and_queue().await;
+
+    let a_buf = create_sb_with_data(&device, &a_limbs);
+    let b_buf = create_sb_with_data(&device, &b_limbs);
+    let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
+
+    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&a_buf, &b_buf, &result_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf],
+    ).await;
+
+    let result = bigint::to_biguint_le(
+        &results[0][0..num_limbs].to_vec(),
+        num_limbs,
+        log_limb_size,
+    );
+
+    assert_eq!(result, expected);
+}
+
+async fn do_ff_mul_test(
+    a: &BigUint,
+    b: &BigUint,
+    p: &BigUint,
+    log_limb_size: u32,
+    filename: &str,
+    entrypoint: &str,
+) {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let expected = a * b % p;
+    let a_limbs = bigint::from_biguint_le(&a, num_limbs, log_limb_size);
+    let b_limbs = bigint::from_biguint_le(&b, num_limbs, log_limb_size);
 
     let (device, queue) = get_device_and_queue().await;
 

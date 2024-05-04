@@ -173,3 +173,37 @@ fn recover_affine_ys_a0(
 
     return mont_sqrt_case3mod4(&xr_cubed_plus_b, p);
 }
+
+fn jacobian_mul(
+    pt: ptr<function, Point>,
+    x: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> Point {
+    /*var zero: BigInt;*/
+    /*var one: BigInt;*/
+    /*one.limbs[0] = 1u;*/
+
+    var result: Point;
+    var result_is_inf = true;
+
+    var s = *x;
+    var temp = *pt;
+
+    while (!bigint_is_zero(&s)) {
+        if (!bigint_is_even(&s)) {
+            if (result_is_inf) {
+                // This check is needed to prevent jacobian_add_2007_bl_unsafe
+                // from getting the point at infinity as an input.
+                // Note that {0, 0, 0} is not actaully the point at infinity.
+                result = temp;
+                result_is_inf = false;
+            } else {
+                result = jacobian_add_2007_bl_unsafe(&result, &temp, p);
+            }
+        }
+        temp = jacobian_dbl_2009_l(&temp, p);
+        s = bigint_div2(&s);
+    }
+
+    return result;
+}

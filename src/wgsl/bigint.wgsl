@@ -6,6 +6,10 @@ struct BigIntMediumWide {
     limbs: array<u32, {{ num_limbs + 1 }}>
 }
 
+struct BigIntWide {
+    limbs: array<u32, {{ num_limbs * 2 }}>
+}
+
 fn bigint_wide_add(
     lhs: ptr<function, BigInt>,
     rhs: ptr<function, BigInt>,
