@@ -154,49 +154,49 @@ pub async fn do_add_test(
     let b_y_r_limbs = bigint::from_biguint_le(&b_y_r, num_limbs, log_limb_size);
     let b_z_r_limbs = bigint::from_biguint_le(&b_z_r, num_limbs, log_limb_size);
 
-   let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
-   let rinv = res.0;
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
 
-   let a = Projective::new(a.x, a.y, a.z);
-   let b = Projective::new(b.x, b.y, b.z);
-   let expected_sum_affine = (a + b).into_affine();
+    let a = Projective::new(a.x, a.y, a.z);
+    let b = Projective::new(b.x, b.y, b.z);
+    let expected_sum_affine = (a + b).into_affine();
 
-   let (device, queue) = get_device_and_queue().await;
+    let (device, queue) = get_device_and_queue().await;
 
-   let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
-   pt_a_limbs.extend_from_slice(&a_x_r_limbs);
-   pt_a_limbs.extend_from_slice(&a_y_r_limbs);
-   pt_a_limbs.extend_from_slice(&a_z_r_limbs);
+    let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
+    pt_a_limbs.extend_from_slice(&a_x_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_z_r_limbs);
 
-   let mut pt_b_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
-   pt_b_limbs.extend_from_slice(&b_x_r_limbs);
-   pt_b_limbs.extend_from_slice(&b_y_r_limbs);
-   pt_b_limbs.extend_from_slice(&b_z_r_limbs);
+    let mut pt_b_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
+    pt_b_limbs.extend_from_slice(&b_x_r_limbs);
+    pt_b_limbs.extend_from_slice(&b_y_r_limbs);
+    pt_b_limbs.extend_from_slice(&b_z_r_limbs);
 
-   let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
-   let pt_b_buf = create_sb_with_data(&device, &pt_b_limbs);
-   let result_buf = create_empty_sb(&device, pt_a_buf.size());
+    let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
+    let pt_b_buf = create_sb_with_data(&device, &pt_b_limbs);
+    let result_buf = create_empty_sb(&device, pt_a_buf.size());
 
-   let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
-   let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+    let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
-   let mut command_encoder = create_command_encoder(&device);
+    let mut command_encoder = create_command_encoder(&device);
 
-   let bind_group = create_bind_group(
-       &device,
-       &compute_pipeline,
-       0,
-       &[&pt_a_buf, &pt_b_buf, &result_buf],
-   );
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&pt_a_buf, &pt_b_buf, &result_buf],
+        );
 
-   execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
     let results = finish_encoder_and_read_from_gpu(
         &device,
         &queue,
         Box::new(command_encoder),
         &[result_buf],
-    ).await;
+        ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -231,43 +231,43 @@ pub async fn do_dbl_test(
     let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
     let a_z_r_limbs = bigint::from_biguint_le(&a_z_r, num_limbs, log_limb_size);
 
-   let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
-   let rinv = res.0;
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
 
-   let a = Projective::new(a.x, a.y, a.z);
-   let expected_sum_affine = (a + a).into_affine();
+    let a = Projective::new(a.x, a.y, a.z);
+    let expected_sum_affine = (a + a).into_affine();
 
-   let (device, queue) = get_device_and_queue().await;
+    let (device, queue) = get_device_and_queue().await;
 
-   let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
-   pt_a_limbs.extend_from_slice(&a_x_r_limbs);
-   pt_a_limbs.extend_from_slice(&a_y_r_limbs);
-   pt_a_limbs.extend_from_slice(&a_z_r_limbs);
+    let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
+    pt_a_limbs.extend_from_slice(&a_x_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_z_r_limbs);
 
-   let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
-   let pt_b_buf = create_empty_sb(&device, pt_a_buf.size());
-   let result_buf = create_empty_sb(&device, pt_a_buf.size());
+    let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
+    let pt_b_buf = create_empty_sb(&device, pt_a_buf.size());
+    let result_buf = create_empty_sb(&device, pt_a_buf.size());
 
-   let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
-   let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+    let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
-   let mut command_encoder = create_command_encoder(&device);
+    let mut command_encoder = create_command_encoder(&device);
 
-   let bind_group = create_bind_group(
-       &device,
-       &compute_pipeline,
-       0,
-       &[&pt_a_buf, &pt_b_buf, &result_buf],
-   );
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&pt_a_buf, &pt_b_buf, &result_buf],
+        );
 
-   execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
     let results = finish_encoder_and_read_from_gpu(
         &device,
         &queue,
         Box::new(command_encoder),
         &[result_buf],
-    ).await;
+        ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -303,7 +303,7 @@ pub async fn do_recover_affine_ys_test(
     log_limb_size: u32,
     filename: &str,
     entrypoint: &str,
-) {
+    ) {
     let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let r = mont::calc_mont_radix(num_limbs, log_limb_size);
@@ -311,35 +311,35 @@ pub async fn do_recover_affine_ys_test(
 
     let xr_limbs = bigint::from_biguint_le(&xr, num_limbs, log_limb_size);
 
-   let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
-   let rinv = res.0;
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
 
-   let (device, queue) = get_device_and_queue().await;
+    let (device, queue) = get_device_and_queue().await;
 
-   let xr_buf = create_sb_with_data(&device, &xr_limbs);
-   let result_0_buf = create_empty_sb(&device, xr_buf.size());
-   let result_1_buf = create_empty_sb(&device, xr_buf.size());
+    let xr_buf = create_sb_with_data(&device, &xr_limbs);
+    let result_0_buf = create_empty_sb(&device, xr_buf.size());
+    let result_1_buf = create_empty_sb(&device, xr_buf.size());
 
-   let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
-   let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+    let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
-   let mut command_encoder = create_command_encoder(&device);
+    let mut command_encoder = create_command_encoder(&device);
 
-   let bind_group = create_bind_group(
-       &device,
-       &compute_pipeline,
-       0,
-       &[&xr_buf, &result_0_buf, &result_1_buf],
-   );
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&xr_buf, &result_0_buf, &result_1_buf],
+        );
 
-   execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
     let results = finish_encoder_and_read_from_gpu(
         &device,
         &queue,
         Box::new(command_encoder),
         &[result_0_buf, result_1_buf],
-    ).await;
+        ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -366,7 +366,7 @@ pub async fn scalar_mul() {
 
     // TODO: handle the case where x == 0
 
-    for log_limb_size in 13..14 {
+    for log_limb_size in 11..15 {
         for _ in 0..NUM_RUNS_PER_TEST {
             let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
@@ -403,42 +403,42 @@ pub async fn do_scalar_mul_test(
     let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
     let a_z_r_limbs = bigint::from_biguint_le(&a_z_r, num_limbs, log_limb_size);
 
-   let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
-   let rinv = res.0;
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
 
-   let a = Projective::new(a.x, a.y, a.z);
+    let a = Projective::new(a.x, a.y, a.z);
 
-   let (device, queue) = get_device_and_queue().await;
+    let (device, queue) = get_device_and_queue().await;
 
-   let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
-   pt_a_limbs.extend_from_slice(&a_x_r_limbs);
-   pt_a_limbs.extend_from_slice(&a_y_r_limbs);
-   pt_a_limbs.extend_from_slice(&a_z_r_limbs);
+    let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
+    pt_a_limbs.extend_from_slice(&a_x_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_z_r_limbs);
 
-   let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
-   let xr_buf = create_sb_with_data(&device, &xr_limbs);
-   let result_buf = create_empty_sb(&device, pt_a_buf.size());
+    let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
+    let xr_buf = create_sb_with_data(&device, &xr_limbs);
+    let result_buf = create_empty_sb(&device, pt_a_buf.size());
 
-   let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
-   let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+    let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
-   let mut command_encoder = create_command_encoder(&device);
+    let mut command_encoder = create_command_encoder(&device);
 
-   let bind_group = create_bind_group(
-       &device,
-       &compute_pipeline,
-       0,
-       &[&pt_a_buf, &xr_buf, &result_buf],
-   );
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&pt_a_buf, &xr_buf, &result_buf],
+        );
 
-   execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
     let results = finish_encoder_and_read_from_gpu(
         &device,
         &queue,
         Box::new(command_encoder),
         &[result_buf],
-    ).await;
+        ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -455,6 +455,138 @@ pub async fn do_scalar_mul_test(
     let result_proj = Projective::new(result_x, result_y, result_z);
 
     let expected = a.mul(Fr::from_be_bytes_mod_order(&x.to_bytes_be()));
+
+    assert!(result_proj.eq(&expected));
+
+    assert_eq!(result_affine, expected.into_affine());
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn strauss_shamir_mul() {
+    let mut rng = ChaCha8Rng::seed_from_u64(2);
+
+    let g = Affine::generator();
+
+    for log_limb_size in 11..15 {
+        for _ in 0..NUM_RUNS_PER_TEST {
+            // a and b are in Jacobian
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+            let a: Projective = g.mul(s).into_affine().into();
+
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+            let b: Projective = g.mul(s).into_affine().into();
+
+            let x: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let y: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+
+            let a = curve::ProjectiveXYZ {x: a.x, y: a.y, z: a.z };
+            let b = curve::ProjectiveXYZ {x: b.x, y: b.y, z: b.z };
+
+            do_strauss_shamir_mul_test(&a, &b, &x, &y, jacobian_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
+        }
+    }
+}
+
+pub async fn do_strauss_shamir_mul_test(
+    a: &curve::ProjectiveXYZ,
+    b: &curve::ProjectiveXYZ,
+    x: &BigUint,
+    y: &BigUint,
+    to_affine_func: fn(Fq, Fq, Fq) -> Affine,
+    log_limb_size: u32,
+    filename: &str,
+    entrypoint: &str,
+) {
+    let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+
+    let xr = x * &r % &p;
+    let yr = y * &r % &p;
+
+    let xr_limbs = bigint::from_biguint_le(&xr, num_limbs, log_limb_size);
+    let yr_limbs = bigint::from_biguint_le(&yr, num_limbs, log_limb_size);
+
+    let a_x_r = fq_to_biguint(a.x) * &r % &p;
+    let a_y_r = fq_to_biguint(a.y) * &r % &p;
+    let a_z_r = fq_to_biguint(a.z) * &r % &p;
+
+    let b_x_r = fq_to_biguint(b.x) * &r % &p;
+    let b_y_r = fq_to_biguint(b.y) * &r % &p;
+    let b_z_r = fq_to_biguint(b.z) * &r % &p;
+
+    let a_x_r_limbs = bigint::from_biguint_le(&a_x_r, num_limbs, log_limb_size);
+    let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
+    let a_z_r_limbs = bigint::from_biguint_le(&a_z_r, num_limbs, log_limb_size);
+
+    let b_x_r_limbs = bigint::from_biguint_le(&b_x_r, num_limbs, log_limb_size);
+    let b_y_r_limbs = bigint::from_biguint_le(&b_y_r, num_limbs, log_limb_size);
+    let b_z_r_limbs = bigint::from_biguint_le(&b_z_r, num_limbs, log_limb_size);
+
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+
+    let a = Projective::new(a.x, a.y, a.z);
+    let b = Projective::new(b.x, b.y, b.z);
+
+    let (device, queue) = get_device_and_queue().await;
+
+    let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
+    pt_a_limbs.extend_from_slice(&a_x_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_z_r_limbs);
+
+    let mut pt_b_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
+    pt_b_limbs.extend_from_slice(&b_x_r_limbs);
+    pt_b_limbs.extend_from_slice(&b_y_r_limbs);
+    pt_b_limbs.extend_from_slice(&b_z_r_limbs);
+
+    let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
+    let pt_b_buf = create_sb_with_data(&device, &pt_b_limbs);
+    let xr_buf = create_sb_with_data(&device, &xr_limbs);
+    let yr_buf = create_sb_with_data(&device, &yr_limbs);
+    let result_buf = create_empty_sb(&device, pt_a_buf.size());
+
+    let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&pt_a_buf, &pt_b_buf, &xr_buf, &yr_buf, &result_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf],
+    ).await;
+
+    let convert_result_coord = |data: &Vec<u32>| -> Fq {
+        let d = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        let result = &d * &rinv % &p;
+
+        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
+    };
+
+    let result_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
+    let result_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
+    let result_z = convert_result_coord(&results[0][(num_limbs * 2)..(num_limbs * 3)].to_vec());
+    let result_affine = to_affine_func(result_x, result_y, result_z);
+
+    let result_proj = Projective::new(result_x, result_y, result_z);
+
+    let expected = a.mul(Fr::from_be_bytes_mod_order(&x.to_bytes_be())) + 
+        b.mul(Fr::from_be_bytes_mod_order(&y.to_bytes_be()));
 
     assert!(result_proj.eq(&expected));
 

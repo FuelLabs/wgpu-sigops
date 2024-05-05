@@ -160,6 +160,9 @@ fn jacobian_dbl_2009_l(
     return Point(x3, y3, z3);
 }
 
+/*
+ * Return the two possible Y-coordinates of an affine point, given its X-coordinate
+ */
 fn recover_affine_ys_a0(
     xr: ptr<function, BigInt>,
     p: ptr<function, BigInt>
@@ -174,16 +177,19 @@ fn recover_affine_ys_a0(
     return mont_sqrt_case3mod4(&xr_cubed_plus_b, p);
 }
 
+/*
+ * Scalar multiplication using double-and-add
+ */
 fn jacobian_mul(
     pt: ptr<function, Point>,
     x: ptr<function, BigInt>,
     p: ptr<function, BigInt>
 ) -> Point {
-    /*var zero: BigInt;*/
-    /*var one: BigInt;*/
-    /*one.limbs[0] = 1u;*/
+    var zero: BigInt;
+    var one: BigInt;
+    one.limbs[0] = 1u;
 
-    var result: Point;
+    var result = Point(one, one, zero);
     var result_is_inf = true;
 
     var s = *x;
@@ -194,7 +200,6 @@ fn jacobian_mul(
             if (result_is_inf) {
                 // This check is needed to prevent jacobian_add_2007_bl_unsafe
                 // from getting the point at infinity as an input.
-                // Note that {0, 0, 0} is not actaully the point at infinity.
                 result = temp;
                 result_is_inf = false;
             } else {
@@ -203,6 +208,100 @@ fn jacobian_mul(
         }
         temp = jacobian_dbl_2009_l(&temp, p);
         s = bigint_div2(&s);
+    }
+
+    return result;
+}
+
+struct BitsResult {
+    bits: array<bool, 256>,
+    num_bits: u32
+}
+
+/*
+ * Calculate the binary expansion of x, which must not be in Montgomery form.
+ * Supports up to 256 bits.
+ */
+fn bigint_to_bits_le(
+    x: ptr<function, BigInt>
+) -> BitsResult {
+    var bits: array<bool, 256>;
+    var num_bits = 0u;
+
+    var s = *x;
+
+    while (!bigint_is_zero(&s)) {
+        if (!bigint_is_even(&s)) {
+            bits[num_bits] = true;
+        }
+        s = bigint_div2(&s);
+        num_bits += 1u;
+    }
+
+    return BitsResult(bits, num_bits);
+}
+
+/*
+ * Determine ax + by where x and y are scalars and a and b are points.
+ * x and y must not be in Montgomery form.
+ */
+fn jacobian_strauss_shamir_mul(
+    a: ptr<function, Point>,
+    b: ptr<function, Point>,
+    x: ptr<function, BigInt>,
+    y: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> Point {
+    // From https://github.com/mratsim/constantine/issues/36
+    var zero: BigInt;
+    var one: BigInt;
+    one.limbs[0] = 1u;
+
+    var result = Point(one, one, zero);
+    var result_is_inf = true;
+
+    var s0 = *x;
+    var s1 = *y;
+
+    // Compute the bit decomposition of the scalars
+    var s0_bitsresult = bigint_to_bits_le(&s0);
+    var s1_bitsresult = bigint_to_bits_le(&s1);
+
+    // Precompute a + b
+    var ab = jacobian_add_2007_bl_unsafe(a, b, p);
+    var point_to_add: Point;
+
+    // Determine the length of the longest bitstring to avoid doing more loop iterations than necessary
+    var max_bits = max(s0_bitsresult.num_bits, s1_bitsresult.num_bits);
+
+    for (var idx = 0u; idx < max_bits; idx ++) {
+        var i = max_bits - 1u - idx;
+
+        let a_bit = s0_bitsresult.bits[i];
+        let b_bit = s1_bitsresult.bits[i];
+
+        if (!result_is_inf) {
+            result = jacobian_dbl_2009_l(&result, p);
+        }
+
+        if (a_bit && !b_bit) {
+            point_to_add = *a;
+        } else if (!a_bit && b_bit) {
+            point_to_add = *b;
+        } else if (a_bit && b_bit) {
+            point_to_add = ab;
+        }
+
+        if (a_bit || b_bit) {
+            if (result_is_inf) {
+                // Assign instead of adding point_to_add to the point at
+                // infinity, which jacobian_add_2007_bl_unsafe doesn't support
+                result = point_to_add;
+                result_is_inf = false;
+            } else {
+                result = jacobian_add_2007_bl_unsafe(&result, &point_to_add, p);
+            }
+        }
     }
 
     return result;
