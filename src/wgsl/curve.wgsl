@@ -84,6 +84,19 @@ fn projective_dbl_2007_bl_unsafe(
     return Point(x3, y3, z3);
 }
 
+fn jacobian_negate(
+    a: ptr<function, Point>,
+    p: ptr<function, BigInt>
+) -> Point {
+    var x = (*a).x;
+    var y = (*a).y;
+    var z = (*a).z;
+
+    y = ff_sub(p, &y, p);
+
+    Point(x, y, z);
+}
+
 fn jacobian_add_2007_bl_unsafe(
     a: ptr<function, Point>,
     b: ptr<function, Point>,
@@ -174,7 +187,9 @@ fn recover_affine_ys_a0(
     var br = get_br();
     var xr_cubed_plus_b = ff_add(&xr_cubed, &br, p);
 
-    return mont_sqrt_case3mod4(&xr_cubed_plus_b, p);
+    var ys = mont_sqrt_case3mod4(&xr_cubed_plus_b, p);
+
+    return ys;
 }
 
 /*

@@ -29,11 +29,11 @@ pub fn fq_to_biguint(val: Fq) -> BigUint {
     BigUint::from_bytes_be(&b)
 }
 
-fn jacobian_to_affine_func(x: Fq, y: Fq, z: Fq) -> Affine {
+pub fn jacobian_to_affine_func(x: Fq, y: Fq, z: Fq) -> Affine {
     Projective::new(x, y, z).into_affine()
 }
 
-fn projective_to_affine_func(x: Fq, y: Fq, z: Fq) -> Affine {
+pub fn projective_to_affine_func(x: Fq, y: Fq, z: Fq) -> Affine {
     let p = curve::ProjectiveXYZ {x, y, z };
     curve::projectivexyz_to_affine(&p)
 }
@@ -187,7 +187,7 @@ pub async fn do_add_test(
         &compute_pipeline,
         0,
         &[&pt_a_buf, &pt_b_buf, &result_buf],
-        );
+    );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
@@ -196,7 +196,7 @@ pub async fn do_add_test(
         &queue,
         Box::new(command_encoder),
         &[result_buf],
-        ).await;
+    ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -258,7 +258,7 @@ pub async fn do_dbl_test(
         &compute_pipeline,
         0,
         &[&pt_a_buf, &pt_b_buf, &result_buf],
-        );
+    );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
@@ -267,7 +267,7 @@ pub async fn do_dbl_test(
         &queue,
         Box::new(command_encoder),
         &[result_buf],
-        ).await;
+    ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -330,7 +330,7 @@ pub async fn do_recover_affine_ys_test(
         &compute_pipeline,
         0,
         &[&xr_buf, &result_0_buf, &result_1_buf],
-        );
+    );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
@@ -339,7 +339,7 @@ pub async fn do_recover_affine_ys_test(
         &queue,
         Box::new(command_encoder),
         &[result_0_buf, result_1_buf],
-        ).await;
+    ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -429,7 +429,7 @@ pub async fn do_scalar_mul_test(
         &compute_pipeline,
         0,
         &[&pt_a_buf, &xr_buf, &result_buf],
-        );
+    );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
@@ -438,7 +438,7 @@ pub async fn do_scalar_mul_test(
         &queue,
         Box::new(command_encoder),
         &[result_buf],
-        ).await;
+    ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);

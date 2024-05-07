@@ -188,3 +188,10 @@ fn ff_mul(
     }
     return r;
 }
+
+fn ff_negate(
+    a: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> BigInt {
+    return ff_sub(p, a, p);
+}

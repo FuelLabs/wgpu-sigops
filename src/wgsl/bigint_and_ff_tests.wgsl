@@ -124,9 +124,9 @@ fn test_ff_mul(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var b_bigint = b;
 
     var p_wide = get_p_wide();
-    var mu = get_mu();
+    var mu_fp = get_mu_fp();
 
-    var result: BigInt = ff_mul(&a_bigint, &b_bigint, &p_bigint, &p_wide, &mu);
+    var result: BigInt = ff_mul(&a_bigint, &b_bigint, &p_bigint, &p_wide, &mu_fp);
 
     for (var i = 0u; i < {{ num_limbs }}u; i ++) {
         c.limbs[i] = result.limbs[i];

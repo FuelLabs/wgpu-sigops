@@ -13,14 +13,14 @@
 fn test_scalar_mul(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var p = get_p();
     var p_wide = get_p_wide();
-    var mu = get_mu();
+    var mu_fp = get_mu_fp();
 
     var pt_point = pt;
     var xr_bigint = xr;
 
     var rinv = get_rinv();
 
-    var x = ff_mul(&xr_bigint, &rinv, &p, &p_wide, &mu);
+    var x = ff_mul(&xr_bigint, &rinv, &p, &p_wide, &mu_fp);
 
     result = jacobian_mul(&pt_point, &x, &p);
 }

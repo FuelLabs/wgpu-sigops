@@ -87,7 +87,7 @@ fn bigint_wide_sub(
 }
 
 /*
- * Returns true if lhs <= rhs
+ * Returns true if lhs >= rhs
  */
 fn bigint_gte(
     lhs: ptr<function, BigInt>,
@@ -95,10 +95,13 @@ fn bigint_gte(
 ) -> bool {
     for (var i: u32 = 0u; i < {{ num_limbs }}u; i ++) {
         let idx = {{ num_limbs }}u - 1u - i;
-        if ((*lhs).limbs[idx] < (*rhs).limbs[idx]) {
-            return false;
-        } else if ((*lhs).limbs[idx] > (*rhs).limbs[idx]) {
+        let l_limb = (*lhs).limbs[idx];
+        let r_limb = (*rhs).limbs[idx];
+
+        if (l_limb > r_limb) {
             return true;
+        } else if (l_limb < r_limb) {
+            return false;
         }
     }
     return true;

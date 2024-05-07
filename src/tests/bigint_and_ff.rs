@@ -1,4 +1,4 @@
-use crate::shader::render_tests;
+use crate::shader::render_bigint_ff_mont_tests;
 use crate::gpu::{
     create_empty_sb,
     execute_pipeline,
@@ -33,7 +33,7 @@ pub async fn test_bigint_div2() {
     for log_limb_size in 11..16 {
         let num_limbs = calc_num_limbs(log_limb_size, 256);
 
-        for _ in 0..10 {
+        for _ in 0..NUM_RUNS_PER_TEST {
             let mut a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
 
             if &a % BigUint::from(2u32) != BigUint::from(0u32) {
@@ -54,7 +54,7 @@ pub async fn test_ff_inverse() {
     for log_limb_size in 11..16 {
         let num_limbs = calc_num_limbs(log_limb_size, 256);
 
-        for _ in 0..10 {
+        for _ in 0..NUM_RUNS_PER_TEST {
             let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
 
             let expected = Fq::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap();
@@ -82,7 +82,7 @@ pub async fn do_expected_test(
     let b_buf = create_empty_sb(&device, a_buf.size());
     let result_buf = create_empty_sb(&device, a_buf.size() + 4);
 
-    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -316,8 +316,16 @@ pub async fn bigint_gte() {
         let num_limbs = calc_num_limbs(log_limb_size, 256);
 
         for _ in 0..NUM_RUNS_PER_TEST {
-            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
-            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let mut a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let mut b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            
+            if a < b {
+                let temp = a;
+                a = b;
+                b = temp;
+            }
+
+            assert!(a > b);
 
             do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_gte").await;
         }
@@ -380,7 +388,7 @@ async fn do_bigint_wide_sub_test(
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -435,7 +443,7 @@ async fn do_bigint_wide_gte_test(
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -484,7 +492,7 @@ async fn do_ff_mul_test(
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);

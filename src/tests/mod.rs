@@ -1,14 +1,17 @@
-use num_bigint::BigUint;
-use multiprecision::bigint;
-
 #[cfg(test)]
 pub mod bigint_and_ff;
 #[cfg(test)]
 pub mod mont;
 #[cfg(test)]
 pub mod curve;
+#[cfg(test)]
+pub mod ecdsa;
+#[cfg(test)]
+pub mod bytes_to_limbs;
 
-use crate::shader::render_tests;
+use num_bigint::BigUint;
+use multiprecision::bigint;
+use crate::shader::render_bigint_ff_mont_tests;
 use crate::gpu::{
     create_empty_sb,
     execute_pipeline,
@@ -52,7 +55,7 @@ pub async fn do_test(
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (result_len * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
