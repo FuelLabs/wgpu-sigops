@@ -40,7 +40,7 @@ fn secp256k1_ecrecover(
 
     var sig_r = bytes_be_to_limbs_le(sig_r_bytes);
     var sig_s = bytes_be_to_limbs_le(&ds);
-
+   
     var z = *msg;
     var r_x = sig_r;
 
@@ -72,14 +72,12 @@ fn secp256k1_ecrecover(
     }
 
     var recovered_r = Point(rxr, yr, *r);
-
-    // reduce r_x to the scalar field
-    if (bigint_gte(&rxr, scalar_p)) {
-        rxr = bigint_sub(&rxr, scalar_p);
+    if (bigint_gte(&r_x, scalar_p)) {
+        r_x = bigint_sub(&r_x, scalar_p);
     }
-
     // compute inverse(r_x) in the scalar field
     var r_x_inv = ff_inverse(&r_x, scalar_p);
+
 
     // compute u1 = -(r_inv * z);
     var r_x_inv_z = ff_mul(&r_x_inv, &z, scalar_p, scalar_p_wide, mu_fr);

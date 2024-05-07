@@ -10,6 +10,18 @@ struct BigIntWide {
     limbs: array<u32, {{ num_limbs * 2 }}>
 }
 
+fn bigint_eq(
+    lhs: ptr<function, BigInt>,
+    rhs: ptr<function, BigInt>,
+) -> bool {
+    for (var i: u32 = 0u; i < {{ num_limbs }}u; i ++) {
+        if ((*lhs).limbs[i] != (*rhs).limbs[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 fn bigint_wide_add(
     lhs: ptr<function, BigInt>,
     rhs: ptr<function, BigInt>,

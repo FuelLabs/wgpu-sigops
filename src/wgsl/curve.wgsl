@@ -117,6 +117,11 @@ fn jacobian_add_2007_bl_unsafe(
     var s1 = mont_mul(&y1z2, &z2z2, p);
     var y2z1 = mont_mul(&y2, &z1, p);
     var s2 = mont_mul(&y2z1, &z1z1, p);
+
+    if (bigint_eq(&u1, &u2) && bigint_eq(&s1, &s2)) {
+        return jacobian_dbl_2009_l(a, p);
+    }
+
     var h = ff_sub(&u2, &u1, p);
     var h2 = ff_add(&h, &h, p);
     var i = mont_mul(&h2, &h2, p);
@@ -305,17 +310,18 @@ fn jacobian_strauss_shamir_mul(
             point_to_add = *b;
         } else if (a_bit && b_bit) {
             point_to_add = ab;
+        } else {
+            continue;
         }
 
-        if (a_bit || b_bit) {
-            if (result_is_inf) {
-                // Assign instead of adding point_to_add to the point at
-                // infinity, which jacobian_add_2007_bl_unsafe doesn't support
-                result = point_to_add;
-                result_is_inf = false;
-            } else {
-                result = jacobian_add_2007_bl_unsafe(&result, &point_to_add, p);
-            }
+        if (result_is_inf) {
+            // Assign instead of adding point_to_add to the point at
+            // infinity, which jacobian_add_2007_bl_unsafe doesn't support
+            result = point_to_add;
+            result_is_inf = false;
+        } else {
+            // TODO: avoid the case where result == point_to_add!! Or use a Projective algo that is strongly unified?
+            result = jacobian_add_2007_bl_unsafe(&result, &point_to_add, p);
         }
     }
 

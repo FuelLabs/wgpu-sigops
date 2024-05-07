@@ -1,5 +1,6 @@
 use ark_ff::{ PrimeField, BigInteger };
 use ark_secp256k1::{ Affine, Fr, Fq };
+use ark_ec::AffineRepr;
 use num_bigint::{ BigUint };
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ mont, bigint };
@@ -29,7 +30,7 @@ fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
 #[serial_test::serial]
 #[tokio::test]
 pub async fn test_secp256k1_ecrecover() {
-    let message = Message::new(b"A beast can never be as cruel as a human being, so artistically, so picturesquely cruel.");
+    let message = Message::new(b"aA beast can never be as cruel as a human being, so artistically, so picturesquely cruel.");
     //for log_limb_size in 11..15 {
     for log_limb_size in 13..14 {
         for i in 1..10 {
@@ -57,13 +58,15 @@ pub async fn test_secp256k1_ecrecover() {
             let pk = Affine::new(pk_x, pk_y);
             
             let msg = BigUint::from_bytes_be(&msg_bytes);
+            //println!("{}", i);
 
-            do_secp256k1_test(&sig_bytes, &msg, &pk, log_limb_size, jacobian_to_affine_func, "ecdsa_tests.wgsl", "test_secp256k1_recover").await;
+            do_secp256k1_test(i, &sig_bytes, &msg, &pk, log_limb_size, jacobian_to_affine_func, "ecdsa_tests.wgsl", "test_secp256k1_recover").await;
         }
     }
 }
 
 pub async fn do_secp256k1_test(
+    i: u32,
     sig_bytes: &[u8],
     msg: &BigUint,
     expected_pk: &Affine,
@@ -114,8 +117,10 @@ pub async fn do_secp256k1_test(
     ).await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
-        let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
-        let result = &result_x_r * &rinv % &p;
+        let result = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+
+        //println!("{}", result);
+        let result = &result * &rinv % &p;
 
         Fq::from_be_bytes_mod_order(&result.to_bytes_be())
     };
@@ -126,5 +131,8 @@ pub async fn do_secp256k1_test(
 
     let result_affine = to_affine_func(result_x, result_y, result_z);
 
+    if result_affine.is_zero() {
+        println!("i: {}", i);
+    }
     assert_eq!(result_affine, *expected_pk);
 }

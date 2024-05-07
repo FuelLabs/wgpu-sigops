@@ -1,6 +1,6 @@
 use ark_ff::{ PrimeField, BigInteger, One };
 use ark_secp256k1::{ Projective, Affine, Fr, Fq };
-use ark_ec::{ CurveGroup, AffineRepr };
+use ark_ec::{ Group, CurveGroup, AffineRepr };
 use std::ops::{ Mul };
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
@@ -490,6 +490,28 @@ pub async fn strauss_shamir_mul() {
     }
 }
 
+#[serial_test::serial]
+#[tokio::test]
+pub async fn strauss_shamir_mul_2() {
+    let log_limb_size = 13;
+
+    // This will fail unless jacobian_add_2007_bl_unsafe checks that the points are equal, and uses
+    // jacobian_dbl_2009_l instead
+    let x = BigUint::parse_bytes(b"5317765342666414084018319792353530893592072436564430502822210462100391511458", 10).unwrap();
+    let y = BigUint::parse_bytes(b"46675755572426022848089704204679022491044922682966018823593396879232910068368", 10).unwrap();
+
+    let g = Projective::generator();
+    let g = curve::ProjectiveXYZ {x: g.x, y: g.y, z: g.z };
+    let bx = BigUint::parse_bytes(b"18925580804510474892944674167400256241137868311593961719830216860646230522986", 10).unwrap();
+    let by = BigUint::parse_bytes(b"35420509694838299842838812246763002709776683481755937708894751749281941095393", 10).unwrap();
+    let bx = Fq::from_be_bytes_mod_order(&bx.to_bytes_be());
+    let by = Fq::from_be_bytes_mod_order(&by.to_bytes_be());
+    let b = Projective::new(bx, by, Fq::from(1u32));
+    let b = curve::ProjectiveXYZ {x: b.x, y: b.y, z: b.z };
+
+    do_strauss_shamir_mul_test(&g, &b, &x, &y, jacobian_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
+}
+
 pub async fn do_strauss_shamir_mul_test(
     a: &curve::ProjectiveXYZ,
     b: &curve::ProjectiveXYZ,
@@ -574,6 +596,7 @@ pub async fn do_strauss_shamir_mul_test(
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let d = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
         let result = &d * &rinv % &p;
+        //println!("{}", result);
 
         Fq::from_be_bytes_mod_order(&result.to_bytes_be())
     };
