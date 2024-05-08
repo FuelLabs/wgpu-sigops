@@ -165,7 +165,7 @@ pub async fn ff_sub() {
 #[tokio::test]
 pub async fn ff_mul() {
     let mut rng = gen_rng();
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
+    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
 
     for log_limb_size in 11..15 {
         for _ in 0..NUM_RUNS_PER_TEST {

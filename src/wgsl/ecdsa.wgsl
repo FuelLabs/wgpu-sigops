@@ -44,8 +44,8 @@ fn secp256k1_ecrecover(
     var z = *msg;
     var r_x = sig_r;
 
-    var rxr = ff_mul(&r_x, r, p, p_wide, mu_fr);
-    var yrs = recover_affine_ys_a0(&rxr, p);
+    var r_xr = ff_mul(&r_x, r, p, p_wide, mu_fp);
+    var yrs = recover_affine_ys_a0(&r_xr, p);
     var yr0 = yrs[0];
     var yr1 = yrs[1];
 
@@ -71,13 +71,13 @@ fn secp256k1_ecrecover(
         }
     }
 
-    var recovered_r = Point(rxr, yr, *r);
+    var recovered_r = Point(r_xr, yr, *r);
     if (bigint_gte(&r_x, scalar_p)) {
         r_x = bigint_sub(&r_x, scalar_p);
     }
+
     // compute inverse(r_x) in the scalar field
     var r_x_inv = ff_inverse(&r_x, scalar_p);
-
 
     // compute u1 = -(r_inv * z);
     var r_x_inv_z = ff_mul(&r_x_inv, &z, scalar_p, scalar_p_wide, mu_fr);

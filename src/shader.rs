@@ -64,6 +64,7 @@ pub fn do_render(
 
     let br = b * &r % p;
     let br_bigint = gen_constant_bigint("br", &br, num_limbs, log_limb_size);
+
     let mu_fp_bigint = gen_constant_bigint("mu_fp", &ff::gen_mu(&p), num_limbs, log_limb_size);
     let mu_fr_bigint = gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
 

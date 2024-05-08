@@ -31,8 +31,7 @@ fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
 #[tokio::test]
 pub async fn test_secp256k1_ecrecover() {
     let message = Message::new(b"aA beast can never be as cruel as a human being, so artistically, so picturesquely cruel.");
-    //for log_limb_size in 11..15 {
-    for log_limb_size in 13..14 {
+    for log_limb_size in 11..15 {
         for i in 1..10 {
             let mut i_str = format!("{}", i);
             while i_str.len() < 64 {
@@ -58,7 +57,6 @@ pub async fn test_secp256k1_ecrecover() {
             let pk = Affine::new(pk_x, pk_y);
             
             let msg = BigUint::from_bytes_be(&msg_bytes);
-            //println!("{}", i);
 
             do_secp256k1_test(i, &sig_bytes, &msg, &pk, log_limb_size, jacobian_to_affine_func, "ecdsa_tests.wgsl", "test_secp256k1_recover").await;
         }
