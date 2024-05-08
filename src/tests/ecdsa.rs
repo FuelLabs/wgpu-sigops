@@ -1,11 +1,14 @@
 use ark_ff::{ PrimeField, BigInteger };
 use ark_secp256k1::{ Affine, Fr, Fq };
 use ark_ec::AffineRepr;
-use num_bigint::{ BigUint };
+use num_bigint::{ BigUint, RandomBits };
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ mont, bigint };
 use fuel_crypto::{ Message, Signature, SecretKey };
 use std::str::FromStr;
+use rand::Rng;
+use rand_chacha::ChaCha8Rng;
+use rand_chacha::rand_core::SeedableRng;
 use crate::shader::render_ecdsa_tests;
 use crate::gpu::{
     create_empty_sb,
@@ -18,7 +21,7 @@ use crate::gpu::{
     finish_encoder_and_read_from_gpu,
 };
 use crate::tests::get_secp256k1_b;
-use crate::tests::curve::{ jacobian_to_affine_func };
+use crate::tests::curve::{ jacobian_to_affine_func, projective_to_affine_func };
 
 fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
     let mut sig = signature.clone();
@@ -30,9 +33,16 @@ fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
 #[serial_test::serial]
 #[tokio::test]
 pub async fn test_secp256k1_ecrecover() {
-    let message = Message::new(b"aA beast can never be as cruel as a human being, so artistically, so picturesquely cruel.");
-    for log_limb_size in 11..15 {
-        for i in 1..10 {
+    let mut rng = ChaCha8Rng::seed_from_u64(2);
+    let scalar_p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
+    for log_limb_size in 13..14 {
+        for i in 1..100 {
+            let msg: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &scalar_p;
+            println!("{}", hex::encode(msg.to_bytes_be()));
+            let message = Message::new(hex::encode(msg.to_bytes_be()));
+            //let message = Message::new(b"aA beast can never be as cruel as a human being, so artistically, so picturesquely cruel.");
+            //let message = Message::new(b"db7ab4303b0a72c2ca0c574308434c198c65f8c985b46530e19f8bc9318a1bc5");
+ 
             let mut i_str = format!("{}", i);
             while i_str.len() < 64 {
                 i_str = format!("0{}", i_str);
@@ -58,7 +68,7 @@ pub async fn test_secp256k1_ecrecover() {
             
             let msg = BigUint::from_bytes_be(&msg_bytes);
 
-            do_secp256k1_test(i, &sig_bytes, &msg, &pk, log_limb_size, jacobian_to_affine_func, "ecdsa_tests.wgsl", "test_secp256k1_recover").await;
+            do_secp256k1_test(i, &sig_bytes, &msg, &pk, log_limb_size, projective_to_affine_func, "ecdsa_tests.wgsl", "test_secp256k1_recover").await;
         }
     }
 }

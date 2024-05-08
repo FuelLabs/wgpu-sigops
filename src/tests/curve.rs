@@ -495,21 +495,24 @@ pub async fn strauss_shamir_mul() {
 pub async fn strauss_shamir_mul_2() {
     let log_limb_size = 13;
 
-    // This will fail unless jacobian_add_2007_bl_unsafe checks that the points are equal, and uses
-    // jacobian_dbl_2009_l instead
-    let x = BigUint::parse_bytes(b"5317765342666414084018319792353530893592072436564430502822210462100391511458", 10).unwrap();
-    let y = BigUint::parse_bytes(b"46675755572426022848089704204679022491044922682966018823593396879232910068368", 10).unwrap();
+    for i in 1..2 {
+        // This will fail unless jacobian_add_2007_bl_unsafe checks that the points are equal, and uses
+        // jacobian_dbl_2009_l instead
+        let x = BigUint::parse_bytes(b"8ce48a1b5f7942ed63c3f5380d98bd57f702aa6ded0e8022b4890762aca5fa5d", 16).unwrap();
+        let y = BigUint::parse_bytes(b"84023f2e9587339fe4076de927d8f1cbff4279a6982e1b0599221e20153f147a", 16).unwrap();
 
-    let g = Projective::generator();
-    let g = curve::ProjectiveXYZ {x: g.x, y: g.y, z: g.z };
-    let bx = BigUint::parse_bytes(b"18925580804510474892944674167400256241137868311593961719830216860646230522986", 10).unwrap();
-    let by = BigUint::parse_bytes(b"35420509694838299842838812246763002709776683481755937708894751749281941095393", 10).unwrap();
-    let bx = Fq::from_be_bytes_mod_order(&bx.to_bytes_be());
-    let by = Fq::from_be_bytes_mod_order(&by.to_bytes_be());
-    let b = Projective::new(bx, by, Fq::from(1u32));
-    let b = curve::ProjectiveXYZ {x: b.x, y: b.y, z: b.z };
+        let g = Affine::generator();
+        let g = curve::ProjectiveXYZ {x: g.x, y: g.y, z: Fq::one() };
+        
+        let bx = BigUint::parse_bytes(b"57955212013049338432744149260690748736552621582696778344469660993364486735760", 10).unwrap();
+        let by = BigUint::parse_bytes(b"18014696949887157897072847726343716132385694929890630512424732633979399864330", 10).unwrap();
+        let bx = Fq::from_be_bytes_mod_order(&bx.to_bytes_be());
+        let by = Fq::from_be_bytes_mod_order(&by.to_bytes_be());
+        let b = Affine::new(bx, by);
+        let b = curve::ProjectiveXYZ {x: b.x, y: b.y, z: Fq::one() };
 
-    do_strauss_shamir_mul_test(&g, &b, &x, &y, jacobian_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
+        do_strauss_shamir_mul_test(&g, &b, &x, &y, projective_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
+    }
 }
 
 pub async fn do_strauss_shamir_mul_test(
@@ -526,11 +529,8 @@ pub async fn do_strauss_shamir_mul_test(
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let r = mont::calc_mont_radix(num_limbs, log_limb_size);
 
-    let xr = x * &r % &p;
-    let yr = y * &r % &p;
-
-    let xr_limbs = bigint::from_biguint_le(&xr, num_limbs, log_limb_size);
-    let yr_limbs = bigint::from_biguint_le(&yr, num_limbs, log_limb_size);
+    let x_limbs = bigint::from_biguint_le(&x, num_limbs, log_limb_size);
+    let y_limbs = bigint::from_biguint_le(&y, num_limbs, log_limb_size);
 
     let a_x_r = fq_to_biguint(a.x) * &r % &p;
     let a_y_r = fq_to_biguint(a.y) * &r % &p;
@@ -553,6 +553,11 @@ pub async fn do_strauss_shamir_mul_test(
 
     let a = Projective::new(a.x, a.y, a.z);
     let b = Projective::new(b.x, b.y, b.z);
+    assert_eq!(a.z, Fq::one());
+    assert_eq!(b.z, Fq::one());
+
+    let expected = a.mul(Fr::from_be_bytes_mod_order(&x.to_bytes_be())) + 
+        b.mul(Fr::from_be_bytes_mod_order(&y.to_bytes_be()));
 
     let (device, queue) = get_device_and_queue().await;
 
@@ -568,8 +573,8 @@ pub async fn do_strauss_shamir_mul_test(
 
     let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
     let pt_b_buf = create_sb_with_data(&device, &pt_b_limbs);
-    let xr_buf = create_sb_with_data(&device, &xr_limbs);
-    let yr_buf = create_sb_with_data(&device, &yr_limbs);
+    let x_buf = create_sb_with_data(&device, &x_limbs);
+    let y_buf = create_sb_with_data(&device, &y_limbs);
     let result_buf = create_empty_sb(&device, pt_a_buf.size());
 
     let source = render_curve_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
@@ -581,7 +586,7 @@ pub async fn do_strauss_shamir_mul_test(
         &device,
         &compute_pipeline,
         0,
-        &[&pt_a_buf, &pt_b_buf, &xr_buf, &yr_buf, &result_buf],
+        &[&pt_a_buf, &pt_b_buf, &x_buf, &y_buf, &result_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
@@ -595,8 +600,8 @@ pub async fn do_strauss_shamir_mul_test(
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let d = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        //println!("{}", d);
         let result = &d * &rinv % &p;
-        //println!("{}", result);
 
         Fq::from_be_bytes_mod_order(&result.to_bytes_be())
     };
@@ -605,13 +610,6 @@ pub async fn do_strauss_shamir_mul_test(
     let result_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
     let result_z = convert_result_coord(&results[0][(num_limbs * 2)..(num_limbs * 3)].to_vec());
     let result_affine = to_affine_func(result_x, result_y, result_z);
-
-    let result_proj = Projective::new(result_x, result_y, result_z);
-
-    let expected = a.mul(Fr::from_be_bytes_mod_order(&x.to_bytes_be())) + 
-        b.mul(Fr::from_be_bytes_mod_order(&y.to_bytes_be()));
-
-    assert!(result_proj.eq(&expected));
 
     assert_eq!(result_affine, expected.into_affine());
 }

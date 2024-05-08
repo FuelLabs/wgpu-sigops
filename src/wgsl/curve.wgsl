@@ -196,6 +196,39 @@ fn recover_affine_ys_a0(
 
     return ys;
 }
+/*
+ * Scalar multiplication using double-and-add
+ */
+fn projective_mul(
+    pt: ptr<function, Point>,
+    x: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> Point {
+    var zero: BigInt;
+    var one: BigInt;
+    one.limbs[0] = 1u;
+
+    var result = Point(zero, one, zero);
+    var result_is_inf = true;
+
+    var s = *x;
+    var temp = *pt;
+
+    while (!bigint_is_zero(&s)) {
+        if (!bigint_is_even(&s)) {
+            if (result_is_inf) {
+                result = temp;
+                result_is_inf = false;
+            } else {
+                result = projective_add_2007_bl_unsafe(&result, &temp, p);
+            }
+        }
+        temp = projective_dbl_2007_bl_unsafe(&temp, p);
+        s = bigint_div2(&s);
+    }
+
+    return result;
+}
 
 /*
  * Scalar multiplication using double-and-add
@@ -265,7 +298,7 @@ fn bigint_to_bits_le(
  * Determine ax + by where x and y are scalars and a and b are points.
  * x and y must not be in Montgomery form.
  */
-fn jacobian_strauss_shamir_mul(
+fn projective_strauss_shamir_mul(
     a: ptr<function, Point>,
     b: ptr<function, Point>,
     x: ptr<function, BigInt>,
@@ -277,7 +310,7 @@ fn jacobian_strauss_shamir_mul(
     var one: BigInt;
     one.limbs[0] = 1u;
 
-    var result = Point(one, one, zero);
+    var result = Point(zero, one, zero);
     var result_is_inf = true;
 
     var s0 = *x;
@@ -288,7 +321,7 @@ fn jacobian_strauss_shamir_mul(
     var s1_bitsresult = bigint_to_bits_le(&s1);
 
     // Precompute a + b
-    var ab = jacobian_add_2007_bl_unsafe(a, b, p);
+    var ab = projective_add_2007_bl_unsafe(a, b, p);
     var point_to_add: Point;
 
     // Determine the length of the longest bitstring to avoid doing more loop iterations than necessary
@@ -301,7 +334,7 @@ fn jacobian_strauss_shamir_mul(
         let b_bit = s1_bitsresult.bits[i];
 
         if (!result_is_inf) {
-            result = jacobian_dbl_2009_l(&result, p);
+            result = projective_dbl_2007_bl_unsafe(&result, p);
         }
 
         if (a_bit && !b_bit) {
@@ -321,7 +354,7 @@ fn jacobian_strauss_shamir_mul(
             result_is_inf = false;
         } else {
             // TODO: avoid the case where result == point_to_add!! Or use a Projective algo that is strongly unified?
-            result = jacobian_add_2007_bl_unsafe(&result, &point_to_add, p);
+            result = projective_add_2007_bl_unsafe(&result, &point_to_add, p);
         }
     }
 
