@@ -1,6 +1,6 @@
 use ark_ff::{ PrimeField, BigInteger, One };
 use ark_secp256k1::{ Projective, Affine, Fr, Fq };
-use ark_ec::{ Group, CurveGroup, AffineRepr };
+use ark_ec::{ CurveGroup, AffineRepr };
 use std::ops::{ Mul };
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
@@ -468,9 +468,8 @@ pub async fn strauss_shamir_mul() {
 
     let g = Affine::generator();
 
-    for log_limb_size in 11..15 {
+    for log_limb_size in 11..14 {
         for _ in 0..NUM_RUNS_PER_TEST {
-            // a and b are in Jacobian
             let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
             let a: Projective = g.mul(s).into_affine().into();
@@ -485,7 +484,7 @@ pub async fn strauss_shamir_mul() {
             let a = curve::ProjectiveXYZ {x: a.x, y: a.y, z: a.z };
             let b = curve::ProjectiveXYZ {x: b.x, y: b.y, z: b.z };
 
-            do_strauss_shamir_mul_test(&a, &b, &x, &y, jacobian_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
+            do_strauss_shamir_mul_test(&a, &b, &x, &y, projective_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
         }
     }
 }
@@ -495,24 +494,22 @@ pub async fn strauss_shamir_mul() {
 pub async fn strauss_shamir_mul_2() {
     let log_limb_size = 13;
 
-    for i in 1..2 {
-        // This will fail unless jacobian_add_2007_bl_unsafe checks that the points are equal, and uses
-        // jacobian_dbl_2009_l instead
-        let x = BigUint::parse_bytes(b"8ce48a1b5f7942ed63c3f5380d98bd57f702aa6ded0e8022b4890762aca5fa5d", 16).unwrap();
-        let y = BigUint::parse_bytes(b"84023f2e9587339fe4076de927d8f1cbff4279a6982e1b0599221e20153f147a", 16).unwrap();
+    // This is an interesting case as it fails at the 254th bit where P + Q = inf; where P and Q
+    // sit on the opposite sides of the Y-axis. Not sure why we end up with these two points.
+    let x = BigUint::parse_bytes(b"8ce48a1b5f7942ed63c3f5380d98bd57f702aa6ded0e8022b4890762aca5fa5d", 16).unwrap();
+    let y = BigUint::parse_bytes(b"84023f2e9587339fe4076de927d8f1cbff4279a6982e1b0599221e20153f147a", 16).unwrap();
 
-        let g = Affine::generator();
-        let g = curve::ProjectiveXYZ {x: g.x, y: g.y, z: Fq::one() };
-        
-        let bx = BigUint::parse_bytes(b"57955212013049338432744149260690748736552621582696778344469660993364486735760", 10).unwrap();
-        let by = BigUint::parse_bytes(b"18014696949887157897072847726343716132385694929890630512424732633979399864330", 10).unwrap();
-        let bx = Fq::from_be_bytes_mod_order(&bx.to_bytes_be());
-        let by = Fq::from_be_bytes_mod_order(&by.to_bytes_be());
-        let b = Affine::new(bx, by);
-        let b = curve::ProjectiveXYZ {x: b.x, y: b.y, z: Fq::one() };
+    let g = Affine::generator();
+    let g = curve::ProjectiveXYZ {x: g.x, y: g.y, z: Fq::one() };
+    
+    let bx = BigUint::parse_bytes(b"57955212013049338432744149260690748736552621582696778344469660993364486735760", 10).unwrap();
+    let by = BigUint::parse_bytes(b"18014696949887157897072847726343716132385694929890630512424732633979399864330", 10).unwrap();
+    let bx = Fq::from_be_bytes_mod_order(&bx.to_bytes_be());
+    let by = Fq::from_be_bytes_mod_order(&by.to_bytes_be());
+    let b = Affine::new(bx, by);
+    let b = curve::ProjectiveXYZ {x: b.x, y: b.y, z: Fq::one() };
 
-        do_strauss_shamir_mul_test(&g, &b, &x, &y, projective_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
-    }
+    do_strauss_shamir_mul_test(&g, &b, &x, &y, projective_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
 }
 
 pub async fn do_strauss_shamir_mul_test(

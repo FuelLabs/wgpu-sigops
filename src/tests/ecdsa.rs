@@ -21,7 +21,7 @@ use crate::gpu::{
     finish_encoder_and_read_from_gpu,
 };
 use crate::tests::get_secp256k1_b;
-use crate::tests::curve::{ jacobian_to_affine_func, projective_to_affine_func };
+use crate::tests::curve::projective_to_affine_func;
 
 fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
     let mut sig = signature.clone();
@@ -37,8 +37,9 @@ pub async fn test_secp256k1_ecrecover() {
     let scalar_p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
     for log_limb_size in 13..14 {
         for i in 1..100 {
+            // Generate a random message
             let msg: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &scalar_p;
-            println!("{}", hex::encode(msg.to_bytes_be()));
+            //println!("{}", hex::encode(msg.to_bytes_be()));
             let message = Message::new(hex::encode(msg.to_bytes_be()));
             //let message = Message::new(b"aA beast can never be as cruel as a human being, so artistically, so picturesquely cruel.");
             //let message = Message::new(b"db7ab4303b0a72c2ca0c574308434c198c65f8c985b46530e19f8bc9318a1bc5");
