@@ -16,6 +16,12 @@ fn projective_add_2007_bl_unsafe(
     var y2 = (*b).y;
     var z2 = (*b).z;
 
+    if (bigint_is_zero(&x1) && bigint_is_zero(&z1)) {
+        return *b;
+    } else if (bigint_is_zero(&x2) && bigint_is_zero(&z2)) {
+        return *a;
+    }
+
     var u1 = mont_mul(&x1, &z2, p);
     var u2 = mont_mul(&x2, &z1, p);
     var s1 = mont_mul(&y1, &z2, p);
