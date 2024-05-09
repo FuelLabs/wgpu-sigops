@@ -88,10 +88,10 @@ fn secp256k1_ecrecover(
 
     var g = get_secp256k1_generator();
 
-    var g_u1 = projective_mul(&g, &u1, p);
-    var recovered_r_u2 = projective_mul(&recovered_r, &u2, p);
-    return projective_add_2007_bl_unsafe(&g_u1, &recovered_r_u2, p);
+    /*var g_u1 = projective_mul(&g, &u1, p);*/
+    /*var recovered_r_u2 = projective_mul(&recovered_r, &u2, p);*/
+    /*return projective_add_2007_bl_unsafe(&g_u1, &recovered_r_u2, p);*/
 
     // projective_strauss_shamir_mul is currently buggy
-    /*return projective_strauss_shamir_mul(&g, &recovered_r, &u1, &u2, p);*/
+    return projective_strauss_shamir_mul(&g, &recovered_r, &u1, &u2, p);
 }
