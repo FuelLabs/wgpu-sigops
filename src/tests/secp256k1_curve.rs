@@ -8,7 +8,7 @@ use rand_chacha::rand_core::SeedableRng;
 use num_bigint::{ BigUint, RandomBits };
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ mont, bigint };
-use fuel_algos::curve;
+use fuel_algos::secp256k1_curve as curve;
 use crate::shader::render_curve_tests;
 use crate::gpu::{
     create_empty_sb,

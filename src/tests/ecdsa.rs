@@ -21,7 +21,7 @@ use crate::gpu::{
     finish_encoder_and_read_from_gpu,
 };
 use crate::tests::get_secp256k1_b;
-use crate::tests::curve::projective_to_affine_func;
+use crate::tests::secp256k1_curve::projective_to_affine_func;
 
 fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
     let mut sig = signature.clone();

@@ -3,7 +3,7 @@ pub mod bigint_and_ff;
 #[cfg(test)]
 pub mod mont;
 #[cfg(test)]
-pub mod curve;
+pub mod secp256k1_curve;
 #[cfg(test)]
 pub mod ecdsa;
 #[cfg(test)]

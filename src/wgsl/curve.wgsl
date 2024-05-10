@@ -4,6 +4,9 @@ struct Point {
     z: BigInt
 }
 
+/// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2007-bl
+/// Unsafe as it does not work with the point at infinity!
+/// Cost: 16M
 fn projective_add_2007_bl_unsafe(
     a: ptr<function, Point>,
     b: ptr<function, Point>,
@@ -56,6 +59,7 @@ fn projective_add_2007_bl_unsafe(
     return Point(x3, y3, z3);
 }
 
+/// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#doubling-dbl-2007-bl
 fn projective_dbl_2007_bl_unsafe(
     pt: ptr<function, Point>,
     p: ptr<function, BigInt>
@@ -103,6 +107,10 @@ fn jacobian_negate(
     Point(x, y, z);
 }
 
+/// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-add-2007-bl
+/// ark-ec-0.4.2/src/models/short_weierstrass/group.rs
+/// Unsafe as it does not work with the point at infinity!
+/// Cost: 16M
 fn jacobian_add_2007_bl_unsafe(
     a: ptr<function, Point>,
     b: ptr<function, Point>,
@@ -151,6 +159,9 @@ fn jacobian_add_2007_bl_unsafe(
     return Point(x3, y3, z3);
 }
 
+/// ark-ec-0.4.2/src/models/short_weierstrass/group.rs
+/// http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#doubling-dbl-2009-l
+/// Cost: 7M
 fn jacobian_dbl_2009_l(
     pt: ptr<function, Point>,
     p: ptr<function, BigInt>
@@ -330,7 +341,8 @@ fn projective_strauss_shamir_mul(
     var ab = projective_add_2007_bl_unsafe(a, b, p);
     var point_to_add: Point;
 
-    // Determine the length of the longest bitstring to avoid doing more loop iterations than necessary
+    // Determine the length of the longest bitstring to avoid doing more loop
+    // iterations than necessary
     var max_bits = max(s0_bitsresult.num_bits, s1_bitsresult.num_bits);
 
     for (var idx = 0u; idx < max_bits; idx ++) {
@@ -359,7 +371,6 @@ fn projective_strauss_shamir_mul(
             result = point_to_add;
             result_is_inf = false;
         } else {
-            // TODO: avoid the case where result == point_to_add!! Or use a Projective algo that is strongly unified?
             result = projective_add_2007_bl_unsafe(&result, &point_to_add, p);
         }
     }
