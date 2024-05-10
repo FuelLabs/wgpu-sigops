@@ -140,38 +140,18 @@ pub async fn do_add_test(
     let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let r = mont::calc_mont_radix(num_limbs, log_limb_size);
-    let a_x_r = fq_to_biguint(a.x) * &r % &p;
-    let a_y_r = fq_to_biguint(a.y) * &r % &p;
-    let a_z_r = fq_to_biguint(a.z) * &r % &p;
-    let b_x_r = fq_to_biguint(b.x) * &r % &p;
-    let b_y_r = fq_to_biguint(b.y) * &r % &p;
-    let b_z_r = fq_to_biguint(b.z) * &r % &p;
-
-    let a_x_r_limbs = bigint::from_biguint_le(&a_x_r, num_limbs, log_limb_size);
-    let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
-    let a_z_r_limbs = bigint::from_biguint_le(&a_z_r, num_limbs, log_limb_size);
-    let b_x_r_limbs = bigint::from_biguint_le(&b_x_r, num_limbs, log_limb_size);
-    let b_y_r_limbs = bigint::from_biguint_le(&b_y_r, num_limbs, log_limb_size);
-    let b_z_r_limbs = bigint::from_biguint_le(&b_z_r, num_limbs, log_limb_size);
 
     let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
     let rinv = res.0;
+
+    let pt_a_limbs = projectivexyz_to_mont_limbs(&a, &p, log_limb_size);
+    let pt_b_limbs = projectivexyz_to_mont_limbs(&b, &p, log_limb_size);
 
     let a = Projective::new(a.x, a.y, a.z);
     let b = Projective::new(b.x, b.y, b.z);
     let expected_sum_affine = (a + b).into_affine();
 
     let (device, queue) = get_device_and_queue().await;
-
-    let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
-    pt_a_limbs.extend_from_slice(&a_x_r_limbs);
-    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
-    pt_a_limbs.extend_from_slice(&a_z_r_limbs);
-
-    let mut pt_b_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
-    pt_b_limbs.extend_from_slice(&b_x_r_limbs);
-    pt_b_limbs.extend_from_slice(&b_y_r_limbs);
-    pt_b_limbs.extend_from_slice(&b_z_r_limbs);
 
     let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
     let pt_b_buf = create_sb_with_data(&device, &pt_b_limbs);
@@ -364,8 +344,6 @@ pub async fn scalar_mul() {
 
     let g = Affine::generator();
 
-    // TODO: handle the case where x == 0
-
     for log_limb_size in 11..15 {
         for _ in 0..NUM_RUNS_PER_TEST {
             let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
@@ -375,6 +353,9 @@ pub async fn scalar_mul() {
             // a is in Jacobian
             let a: Projective = g.mul(s).into_affine().into();
             let a = curve::ProjectiveXYZ {x: a.x, y: a.y, z: a.z };
+            do_scalar_mul_test(&a, &x, jacobian_to_affine_func, log_limb_size, "curve_scalar_mul_tests.wgsl", "test_scalar_mul").await;
+
+            let x = BigUint::from(0u32);
             do_scalar_mul_test(&a, &x, jacobian_to_affine_func, log_limb_size, "curve_scalar_mul_tests.wgsl", "test_scalar_mul").await;
         }
     }
@@ -468,7 +449,7 @@ pub async fn strauss_shamir_mul() {
 
     let g = Affine::generator();
 
-    for log_limb_size in 11..14 {
+    for log_limb_size in 13..14 {
         for _ in 0..NUM_RUNS_PER_TEST {
             let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
@@ -494,7 +475,8 @@ pub async fn strauss_shamir_mul() {
 pub async fn strauss_shamir_mul_2() {
     let log_limb_size = 13;
 
-    // This is an interesting case as it fails at the 254th bit where P + Q = inf; where P and Q
+    // This is an interesting case if the addition formula does not account for the point at
+    // infinity. It fails at the 254th bit where P + Q = inf; where P and Q
     // sit on the opposite sides of the Y-axis. Not sure why we end up with these two points.
     let x = BigUint::parse_bytes(b"8ce48a1b5f7942ed63c3f5380d98bd57f702aa6ded0e8022b4890762aca5fa5d", 16).unwrap();
     let y = BigUint::parse_bytes(b"84023f2e9587339fe4076de927d8f1cbff4279a6982e1b0599221e20153f147a", 16).unwrap();
@@ -510,6 +492,26 @@ pub async fn strauss_shamir_mul_2() {
     let b = curve::ProjectiveXYZ {x: b.x, y: b.y, z: Fq::one() };
 
     do_strauss_shamir_mul_test(&g, &b, &x, &y, projective_to_affine_func, log_limb_size, "curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
+}
+
+pub fn projectivexyz_to_mont_limbs(
+    a: &curve::ProjectiveXYZ,
+    p: &BigUint,
+    log_limb_size: u32,
+) -> Vec<u32> {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let a_x_r = fq_to_biguint(a.x) * &r % p;
+    let a_y_r = fq_to_biguint(a.y) * &r % p;
+    let a_z_r = fq_to_biguint(a.z) * &r % p;
+    let a_x_r_limbs = bigint::from_biguint_le(&a_x_r, num_limbs, log_limb_size);
+    let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
+    let a_z_r_limbs = bigint::from_biguint_le(&a_z_r, num_limbs, log_limb_size);
+    let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
+    pt_a_limbs.extend_from_slice(&a_x_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_z_r_limbs);
+    pt_a_limbs
 }
 
 pub async fn do_strauss_shamir_mul_test(
@@ -528,26 +530,13 @@ pub async fn do_strauss_shamir_mul_test(
 
     let x_limbs = bigint::from_biguint_le(&x, num_limbs, log_limb_size);
     let y_limbs = bigint::from_biguint_le(&y, num_limbs, log_limb_size);
-
-    let a_x_r = fq_to_biguint(a.x) * &r % &p;
-    let a_y_r = fq_to_biguint(a.y) * &r % &p;
-    let a_z_r = fq_to_biguint(a.z) * &r % &p;
-
-    let b_x_r = fq_to_biguint(b.x) * &r % &p;
-    let b_y_r = fq_to_biguint(b.y) * &r % &p;
-    let b_z_r = fq_to_biguint(b.z) * &r % &p;
-
-    let a_x_r_limbs = bigint::from_biguint_le(&a_x_r, num_limbs, log_limb_size);
-    let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
-    let a_z_r_limbs = bigint::from_biguint_le(&a_z_r, num_limbs, log_limb_size);
-
-    let b_x_r_limbs = bigint::from_biguint_le(&b_x_r, num_limbs, log_limb_size);
-    let b_y_r_limbs = bigint::from_biguint_le(&b_y_r, num_limbs, log_limb_size);
-    let b_z_r_limbs = bigint::from_biguint_le(&b_z_r, num_limbs, log_limb_size);
+    let pt_a_limbs = projectivexyz_to_mont_limbs(&a, &p, log_limb_size);
+    let pt_b_limbs = projectivexyz_to_mont_limbs(&b, &p, log_limb_size);
 
     let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
     let rinv = res.0;
 
+    // a and b should have z = 1 to be valid Projective coordinates since x and y are affine
     let a = Projective::new(a.x, a.y, a.z);
     let b = Projective::new(b.x, b.y, b.z);
     assert_eq!(a.z, Fq::one());
@@ -557,16 +546,6 @@ pub async fn do_strauss_shamir_mul_test(
         b.mul(Fr::from_be_bytes_mod_order(&y.to_bytes_be()));
 
     let (device, queue) = get_device_and_queue().await;
-
-    let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
-    pt_a_limbs.extend_from_slice(&a_x_r_limbs);
-    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
-    pt_a_limbs.extend_from_slice(&a_z_r_limbs);
-
-    let mut pt_b_limbs = Vec::<u32>::with_capacity(num_limbs * 3);
-    pt_b_limbs.extend_from_slice(&b_x_r_limbs);
-    pt_b_limbs.extend_from_slice(&b_y_r_limbs);
-    pt_b_limbs.extend_from_slice(&b_z_r_limbs);
 
     let pt_a_buf = create_sb_with_data(&device, &pt_a_limbs);
     let pt_b_buf = create_sb_with_data(&device, &pt_b_limbs);

@@ -1,3 +1,4 @@
+use crate::moduli;
 use stopwatch::Stopwatch;
 use multiprecision::{ bigint, mont };
 use multiprecision::mont::{ calc_nsafe, calc_rinv_and_n0 };
@@ -30,7 +31,7 @@ const NUM_RUNS_PER_TEST: usize = 8;
 pub async fn mont_mul_benchmarks() {
     let mut rng = gen_rng();
 
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
+    let p = moduli::secp256k1_fq_modulus_biguint();
 
     let cost = 8192;
 
@@ -74,19 +75,24 @@ pub async fn mont_mul_benchmarks() {
 pub async fn mont_mul() {
     let mut rng = gen_rng();
 
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
+    let p0 = moduli::secp256k1_fq_modulus_biguint();
+    let p1 = moduli::secp256k1_fr_modulus_biguint();
+    let p2 = moduli::secp256r1_fq_modulus_biguint();
+    let p3 = moduli::secp256r1_fr_modulus_biguint();
 
-    for log_limb_size in 12..16 {
-        for _ in 0..NUM_RUNS_PER_TEST {
-            let num_limbs = calc_num_limbs(log_limb_size, 256);
-            let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    for p in &[&p0, &p1, &p2, &p3] {
+        for log_limb_size in 12..16 {
+            for _ in 0..NUM_RUNS_PER_TEST {
+                let num_limbs = calc_num_limbs(log_limb_size, 256);
+                let r = mont::calc_mont_radix(num_limbs, log_limb_size);
 
-            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-            let ar = &a * &r % &p;
-            let br = &b * &r % &p;
+                let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
+                let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
+                let ar = &a * &r % *p;
+                let br = &b * &r % *p;
 
-            do_mont_test(&ar, &br, &p, &r, log_limb_size, num_limbs, "mont_tests.wgsl", "test_mont_mul").await;
+                do_mont_test(&ar, &br, &p, &r, log_limb_size, num_limbs, "mont_tests.wgsl", "test_mont_mul").await;
+            }
         }
     }
 }
@@ -243,17 +249,22 @@ pub async fn mont_sqrt_case3mod4() {
     //          = sqrt(x)r
     let mut rng = gen_rng();
 
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
+    let p0 = moduli::secp256k1_fq_modulus_biguint();
+    let p1 = moduli::secp256k1_fr_modulus_biguint();
+    let p2 = moduli::secp256r1_fq_modulus_biguint();
+    let p3 = moduli::secp256r1_fr_modulus_biguint();
 
-    for log_limb_size in 11..16 {
-        for _ in 0..10 {
-            let num_limbs = calc_num_limbs(log_limb_size, 256);
-            let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    for p in &[&p0, &p1, &p2, &p3] {
+        for log_limb_size in 11..16 {
+            for _ in 0..10 {
+                let num_limbs = calc_num_limbs(log_limb_size, 256);
+                let r = mont::calc_mont_radix(num_limbs, log_limb_size);
 
-            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-            let x: BigUint = &s * &s % &p;
+                let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+                let x: BigUint = &s * &s % *p;
 
-            do_mont_sqrt_case3mod4_test(&x, &p, &r, log_limb_size, num_limbs, "mont_sqrt_case3mod4_tests.wgsl", "test_mont_sqrt_case3mod4").await
+                do_mont_sqrt_case3mod4_test(&x, &p, &r, log_limb_size, num_limbs, "mont_sqrt_case3mod4_tests.wgsl", "test_mont_sqrt_case3mod4").await
+            }
         }
     }
 }

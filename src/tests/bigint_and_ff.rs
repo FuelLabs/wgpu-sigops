@@ -1,3 +1,4 @@
+use crate::moduli;
 use crate::shader::render_bigint_ff_mont_tests;
 use crate::gpu::{
     create_empty_sb,
@@ -15,7 +16,6 @@ use multiprecision::utils::calc_num_limbs;
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
-use ark_secp256k1::Fq;
 use ark_ff::{ Field, PrimeField, BigInteger };
 use crate::tests::{ get_secp256k1_b, do_test };
 
@@ -29,12 +29,13 @@ fn gen_rng() -> ChaCha8Rng {
 #[tokio::test]
 pub async fn test_bigint_div2() {
     let mut rng = gen_rng();
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
+    let p = moduli::secp256k1_fq_modulus_biguint();
+
     for log_limb_size in 11..16 {
         let num_limbs = calc_num_limbs(log_limb_size, 256);
 
         for _ in 0..NUM_RUNS_PER_TEST {
-            let mut a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+            let mut a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
 
             if &a % BigUint::from(2u32) != BigUint::from(0u32) {
                 a += BigUint::from(1u32);
@@ -42,6 +43,16 @@ pub async fn test_bigint_div2() {
             let expected = &a / BigUint::from(2u32);
 
             do_expected_test(&a, &p, &expected, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_bigint_div_2").await;
+
+            // Test 0 / 2 == 0
+            let zero = BigUint::from(0u32);
+            let expected = BigUint::from(0u32);
+            do_expected_test(&zero, &p, &expected, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_bigint_div_2").await;
+
+            // Test 1 / 2 == 0
+            let one = BigUint::from(1u32);
+            let expected = BigUint::from(0u32);
+            do_expected_test(&one, &p, &expected, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_bigint_div_2").await;
         }
     }
 }
@@ -50,17 +61,39 @@ pub async fn test_bigint_div2() {
 #[tokio::test]
 pub async fn test_ff_inverse() {
     let mut rng = gen_rng();
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
-    for log_limb_size in 11..16 {
-        let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let p0 = moduli::secp256k1_fq_modulus_biguint();
+    let p1 = moduli::secp256k1_fr_modulus_biguint();
+    let p2 = moduli::secp256r1_fq_modulus_biguint();
+    let p3 = moduli::secp256r1_fr_modulus_biguint();
 
-        for _ in 0..NUM_RUNS_PER_TEST {
-            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+    let calc_inverse = |a: &BigUint, p: &BigUint| -> BigUint {
+        if p == &p0 {
+            return BigUint::from_bytes_be(&ark_secp256k1::Fq::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap().into_bigint().to_bytes_be());
+        } else if p == &p1 {
+            return BigUint::from_bytes_be(&ark_secp256k1::Fr::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap().into_bigint().to_bytes_be());
+        } else if p == &p2 {
+            return BigUint::from_bytes_be(&ark_secp256r1::Fq::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap().into_bigint().to_bytes_be());
+        } else if p == &p3 {
+            return BigUint::from_bytes_be(&ark_secp256r1::Fr::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap().into_bigint().to_bytes_be());
+        } else {
+            unimplemented!();
+        }
+    };
 
-            let expected = Fq::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap();
-            let expected = BigUint::from_bytes_be(&expected.into_bigint().to_bytes_be()) % &p;
+    for p in &[&p0, &p1, &p2, &p3] {
+        for log_limb_size in 11..16 {
+            let num_limbs = calc_num_limbs(log_limb_size, 256);
 
-            do_expected_test(&a, &p, &expected, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_ff_inverse").await;
+            for _ in 0..NUM_RUNS_PER_TEST {
+                let mut a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
+                if a == BigUint::from(0u32) {
+                    a = BigUint::from(1u32);
+                }
+
+                let expected = calc_inverse(&a, &p);
+
+                do_expected_test(&a, &p, &expected, log_limb_size, num_limbs, "bigint_and_ff_tests.wgsl", "test_ff_inverse").await;
+            }
         }
     }
 }
@@ -116,20 +149,25 @@ pub async fn do_expected_test(
 #[tokio::test]
 pub async fn ff_add() {
     let mut rng = gen_rng();
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
+    let p0 = moduli::secp256k1_fq_modulus_biguint();
+    let p1 = moduli::secp256k1_fr_modulus_biguint();
+    let p2 = moduli::secp256r1_fq_modulus_biguint();
+    let p3 = moduli::secp256r1_fr_modulus_biguint();
 
     fn biguint_func(a: &BigUint, b: &BigUint, p: &BigUint) -> BigUint { 
         (a + b) % p
     }
 
-    for log_limb_size in 11..15 {
-        let num_limbs = calc_num_limbs(log_limb_size, 256);
+    for p in &[&p0, &p1, &p2, &p3] {
+        for log_limb_size in 11..15 {
+            let num_limbs = calc_num_limbs(log_limb_size, 256);
 
-        for _ in 0..NUM_RUNS_PER_TEST {
-            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+            for _ in 0..NUM_RUNS_PER_TEST {
+                let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
+                let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
 
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, ff::add, biguint_func, "bigint_and_ff_tests.wgsl", "test_ff_add").await;
+                do_test(&a, &b, *p, log_limb_size, num_limbs, num_limbs, ff::add, biguint_func, "bigint_and_ff_tests.wgsl", "test_ff_add").await;
+            }
         }
     }
 }
@@ -138,7 +176,10 @@ pub async fn ff_add() {
 #[tokio::test]
 pub async fn ff_sub() {
     let mut rng = gen_rng();
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
+    let p0 = moduli::secp256k1_fq_modulus_biguint();
+    let p1 = moduli::secp256k1_fr_modulus_biguint();
+    let p2 = moduli::secp256r1_fq_modulus_biguint();
+    let p3 = moduli::secp256r1_fr_modulus_biguint();
 
     fn biguint_func(a: &BigUint, b: &BigUint, p: &BigUint) -> BigUint { 
         if a > b {
@@ -149,14 +190,16 @@ pub async fn ff_sub() {
         }
     }
 
-    for log_limb_size in 11..15 {
-        let num_limbs = calc_num_limbs(log_limb_size, 256);
+    for p in &[&p0, &p1, &p2, &p3] {
+        for log_limb_size in 11..15 {
+            let num_limbs = calc_num_limbs(log_limb_size, 256);
 
-        for _ in 0..NUM_RUNS_PER_TEST {
-            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-    
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, ff::sub, biguint_func, "bigint_and_ff_tests.wgsl", "test_ff_sub").await;
+            for _ in 0..NUM_RUNS_PER_TEST {
+                let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
+                let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
+        
+                do_test(&a, &b, &p, log_limb_size, num_limbs, num_limbs, ff::sub, biguint_func, "bigint_and_ff_tests.wgsl", "test_ff_sub").await;
+            }
         }
     }
 }
@@ -165,14 +208,19 @@ pub async fn ff_sub() {
 #[tokio::test]
 pub async fn ff_mul() {
     let mut rng = gen_rng();
-    let p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16).unwrap();
+    let p0 = moduli::secp256k1_fq_modulus_biguint();
+    let p1 = moduli::secp256k1_fr_modulus_biguint();
+    let p2 = moduli::secp256r1_fq_modulus_biguint();
+    let p3 = moduli::secp256r1_fr_modulus_biguint();
 
-    for log_limb_size in 11..15 {
-        for _ in 0..NUM_RUNS_PER_TEST {
-            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-    
-            do_ff_mul_test(&a, &b, &p, log_limb_size, "bigint_and_ff_tests.wgsl", "test_ff_mul").await;
+    for p in &[&p0, &p1, &p2, &p3] {
+        for log_limb_size in 11..15 {
+            for _ in 0..NUM_RUNS_PER_TEST {
+                let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
+                let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;
+        
+                do_ff_mul_test(&a, &b, &p, log_limb_size, "bigint_and_ff_tests.wgsl", "test_ff_mul").await;
+            }
         }
     }
 }
@@ -194,8 +242,8 @@ pub async fn bigint_wide_add() {
             let mut b: BigUint;
 
             loop {
-                a = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-                b = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+                a = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+                b = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
 
                 // We are testing add_wide, so the sum should overflow
                 if &a + &b > max {
@@ -207,7 +255,7 @@ pub async fn bigint_wide_add() {
                 bigint::add_wide(a, b, log_limb_size)
             }
     
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs + 1, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_wide_add").await;
+            do_test(&a, &b, &p, log_limb_size, num_limbs, num_limbs + 1, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_wide_add").await;
         }
     }
 }
@@ -228,10 +276,10 @@ pub async fn bigint_add_unsafe() {
         fn biguint_func(a: &BigUint, b: &BigUint, _p: &BigUint) -> BigUint { a + b }
 
         for _ in 0..NUM_RUNS_PER_TEST {
-            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
     
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_add_unsafe").await;
+            do_test(&a, &b, &p, log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_add_unsafe").await;
         }
     }
 }
@@ -252,8 +300,8 @@ pub async fn bigint_sub() {
         let num_limbs = calc_num_limbs(log_limb_size, 256);
 
         for _ in 0..NUM_RUNS_PER_TEST {
-            let x: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
-            let y: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &p;
+            let x: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let y: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
 
             let (a, b) = if x > y {
                 (x, y)
@@ -261,7 +309,7 @@ pub async fn bigint_sub() {
                 (y, x)
             };
 
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_sub").await;
+            do_test(&a, &b, &p, log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_sub").await;
         }
     }
 }
@@ -327,7 +375,7 @@ pub async fn bigint_gte() {
 
             assert!(a > b);
 
-            do_test(a, b, p.clone(), log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_gte").await;
+            do_test(&a, &b, &p, log_limb_size, num_limbs, num_limbs, bigint_func, biguint_func, "bigint_and_ff_tests.wgsl", "test_bigint_gte").await;
         }
     }
 }

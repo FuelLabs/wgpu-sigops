@@ -29,9 +29,9 @@ pub fn get_secp256k1_b() -> BigUint {
 
 
 pub async fn do_test(
-    a: BigUint,
-    b: BigUint,
-    p: BigUint,
+    a: &BigUint,
+    b: &BigUint,
+    p: &BigUint,
     log_limb_size: u32,
     num_limbs: usize,
     result_len: usize,
