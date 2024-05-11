@@ -22,13 +22,6 @@ use crate::gpu::{
 };
 use crate::tests::secp256k1_curve::projective_to_affine_func;
 
-fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
-    let mut sig = signature.clone();
-    let is_y_odd = (sig[32] & 0x80) != 0;
-    sig.as_mut()[32] &= 0x7f;
-    (sig, is_y_odd )
-}
-
 #[serial_test::serial]
 #[tokio::test]
 pub async fn test_secp256k1_ecrecover() {
@@ -51,7 +44,7 @@ pub async fn test_secp256k1_ecrecover() {
             let pk = secret.public_key();
             let fuel_signature = Signature::sign(&secret, &message);
             let recovered = fuel_signature.recover(&message).expect("Failed to recover PK");
-            let (_decoded_sig, _is_y_odd) = fuel_decode_signature(&fuel_signature.clone());
+            let (_decoded_sig, _is_y_odd) = crate::tests::fuel_decode_signature(&fuel_signature.clone());
             assert_eq!(recovered, pk);
 
             let msg_bytes = message.as_slice();

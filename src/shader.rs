@@ -177,6 +177,7 @@ pub fn render_secp256k1_curve_tests(
 
     let p = crate::moduli::secp256k1_fq_modulus_biguint();
     let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
+
     let b = get_secp256k1_b();
 
     let source = read_from_file(template_path, "bigint.wgsl");
@@ -223,6 +224,9 @@ pub fn render_secp256k1_ecdsa_tests(
 
     let source = read_from_file(template_path, "secp256k1_curve.wgsl");
     env.add_template("secp256k1_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "signature.wgsl");
+    env.add_template("signature.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "secp256k1_ecdsa.wgsl");
     env.add_template("secp256k1_ecdsa.wgsl", &source).unwrap();
@@ -298,6 +302,9 @@ pub fn render_secp256r1_ecdsa_tests(
 
     let source = read_from_file(template_path, "secp256r1_curve.wgsl");
     env.add_template("secp256r1_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "signature.wgsl");
+    env.add_template("signature.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "secp256r1_ecdsa.wgsl");
     env.add_template("secp256r1_ecdsa.wgsl", &source).unwrap();

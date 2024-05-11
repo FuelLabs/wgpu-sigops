@@ -1,25 +1,3 @@
-struct DecodedSig {
-    sig: array<u32, 32>,
-    is_y_odd: bool
-}
-
-fn decode_signature(
-    sig_s: ptr<function, array<u32, 32>>
-) -> DecodedSig {
-    var s: array<u32, 32>;
-    for (var i = 0u; i < 32; i ++) {
-        s[i] = (*sig_s)[i];
-    }
-    
-    var is_y_odd = (s[0] & 0x80u) != 0;
-    s[0] &= 0x7fu;
-
-    /*let is_y_odd = (sig[32] & 0x80) != 0;*/
-    /*sig.as_mut()[32] &= 0x7f;*/
-
-    return DecodedSig(s, is_y_odd);
-}
-
 fn secp256k1_ecrecover(
     sig_r_bytes: ptr<function, array<u32, 32>>,
     sig_s_bytes: ptr<function, array<u32, 32>>,
@@ -42,17 +20,22 @@ fn secp256k1_ecrecover(
     var sig_s = bytes_be_to_limbs_le(&ds);
    
     var z = *msg;
+
+    if (bigint_gte(&z, scalar_p)) {
+        z = bigint_sub(scalar_p, &z);
+    }
+
     var r_x = sig_r;
 
     var r_xr = ff_mul(&r_x, r, p, p_wide, mu_fp);
-    var yrs = recover_affine_ys_a0(&r_xr, p);
+    var yrs = secp256k1_recover_affine_ys(&r_xr, p);
     var yr0 = yrs[0];
     var yr1 = yrs[1];
 
     var y0 = ff_mul(&yr0, rinv, p, p_wide, mu_fp);
     var y1 = ff_mul(&yr1, rinv, p, p_wide, mu_fp);
 
-    // TODO: could checking if yr_0 or yr_1 is odd be optimised?
+    // TODO: could checking if yr_0 odd be optimised?
     var y0_is_odd = !bigint_is_even(&y0);
 
     var yr: BigInt;
@@ -87,10 +70,6 @@ fn secp256k1_ecrecover(
     var u2 = ff_mul(&r_x_inv, &sig_s, scalar_p, scalar_p_wide, mu_fr);
 
     var g = get_secp256k1_generator();
-
-    /*var g_u1 = projective_mul(&g, &u1, p);*/
-    /*var recovered_r_u2 = projective_mul(&recovered_r, &u2, p);*/
-    /*return projective_add_2007_bl_unsafe(&g_u1, &recovered_r_u2, p);*/
 
     // projective_strauss_shamir_mul is currently buggy
     return projective_strauss_shamir_mul(&g, &recovered_r, &u1, &u2, p);

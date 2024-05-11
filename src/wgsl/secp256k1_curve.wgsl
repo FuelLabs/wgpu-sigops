@@ -198,7 +198,7 @@ fn jacobian_dbl_2009_l(
 /*
  * Return the two possible Y-coordinates of an affine point, given its X-coordinate
  */
-fn recover_affine_ys_a0(
+fn secp256k1_recover_affine_ys(
     xr: ptr<function, BigInt>,
     p: ptr<function, BigInt>
 ) -> array<BigInt, 2> {
@@ -213,6 +213,7 @@ fn recover_affine_ys_a0(
 
     return ys;
 }
+
 /*
  * Scalar multiplication using double-and-add
  */

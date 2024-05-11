@@ -10,7 +10,7 @@ use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ mont, bigint };
 use fuel_algos::secp256r1_curve as curve;
 use fuel_algos::coords;
-use crate::tests::projectivexyz_to_mont_limbs;
+use crate::tests::{ fq_to_biguint, projectivexyz_to_mont_limbs };
 use crate::shader::render_secp256r1_curve_tests;
 use crate::gpu::{
     create_empty_sb,
@@ -76,6 +76,20 @@ pub async fn projective_dbl_2015_rcb() {
             let a = coords::ProjectiveXYZ {x: a.x, y: a.y, z: a.z };
             do_dbl_test(&a, log_limb_size, projective_to_affine_func, "secp256r1_curve_tests.wgsl", "test_projective_dbl_2015_rcb").await;
         }
+    }
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn recover_affine_ys() {
+    let mut rng = ChaCha8Rng::seed_from_u64(2);
+
+    let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+    let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+    let a: Affine = Affine::generator().mul(s).into_affine();
+
+    for log_limb_size in 13..16 {
+        do_recover_affine_ys_test(&a, log_limb_size, "secp256r1_curve_recover_affine_ys_tests.wgsl", "test_secp256r1_recover_affine_ys").await;
     }
 }
 
@@ -202,4 +216,63 @@ pub async fn do_dbl_test(
     let result_affine = to_affine_func(result_x, result_y, result_z);
 
     assert_eq!(result_affine, expected_sum_affine);
+}
+
+pub async fn do_recover_affine_ys_test(
+    a: &Affine,
+    log_limb_size: u32,
+    filename: &str,
+    entrypoint: &str,
+    ) {
+    let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let xr = fq_to_biguint::<Fq>(a.x) * &r % &p;
+
+    let xr_limbs = bigint::from_biguint_le(&xr, num_limbs, log_limb_size);
+
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+
+    let (device, queue) = get_device_and_queue().await;
+
+    let xr_buf = create_sb_with_data(&device, &xr_limbs);
+    let result_0_buf = create_empty_sb(&device, xr_buf.size());
+    let result_1_buf = create_empty_sb(&device, xr_buf.size());
+
+    let source = render_secp256r1_curve_tests("src/wgsl/", filename, log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&xr_buf, &result_0_buf, &result_1_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_0_buf, result_1_buf],
+    ).await;
+
+    let convert_result_coord = |data: &Vec<u32>| -> Fq {
+        let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        let result = &result_x_r * &rinv % &p;
+
+        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
+    };
+
+    let result_y_0 = convert_result_coord(&results[0][0..num_limbs].to_vec());
+    let result_y_1 = convert_result_coord(&results[1][0..num_limbs].to_vec());
+
+    let expected_ys = Affine::get_ys_from_x_unchecked(a.x).unwrap();
+
+    assert!(result_y_0 == expected_ys.0 || result_y_0 == expected_ys.1);
+    assert!(result_y_1 == expected_ys.0 || result_y_1 == expected_ys.1);
 }

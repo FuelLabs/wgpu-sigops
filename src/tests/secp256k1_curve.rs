@@ -260,7 +260,7 @@ pub async fn recover_affine_ys() {
     let a: Affine = Affine::generator().mul(s).into_affine();
 
     for log_limb_size in 13..16 {
-        do_recover_affine_ys_test(&a, log_limb_size, "secp256k1_curve_recover_affine_ys_tests.wgsl", "test_recover_affine_ys").await;
+        do_recover_affine_ys_test(&a, log_limb_size, "secp256k1_curve_recover_affine_ys_tests.wgsl", "test_secp256k1_recover_affine_ys").await;
     }
 }
 

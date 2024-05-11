@@ -128,3 +128,27 @@ fn projective_dbl_2015_rcb(
 
     return Point(x3, y3, z3);
 }
+
+/*
+ * Return the two possible Y-coordinates of an affine point, given its X-coordinate
+ * a = 3
+ */
+fn secp256r1_recover_affine_ys(
+    xr: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> array<BigInt, 2> {
+    var xr_squared = mont_mul(xr, xr, p);
+    var xr_cubed = mont_mul(&xr_squared, xr, p);
+
+    var xr2 = ff_add(xr, xr, p);
+    var xr3 = ff_add(&xr2, xr, p);
+    var axr = ff_negate(&xr3, p);
+    var xr_cubed_plus_ar = ff_add(&xr_cubed, &axr, p);
+
+    var br = get_br();
+    var xr_cubed_plus_ar_plus_br = ff_add(&xr_cubed_plus_ar, &br, p);
+
+    var ys = mont_sqrt_case3mod4(&xr_cubed_plus_ar_plus_br, p);
+
+    return ys;
+}

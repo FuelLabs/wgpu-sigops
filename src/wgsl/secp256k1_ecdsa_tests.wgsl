@@ -2,9 +2,10 @@
 {% include "ff.wgsl" %}
 {% include "mont.wgsl" %}
 {% include "secp256k1_curve.wgsl" %}
+{% include "signature.wgsl" %}
 {% include "secp256k1_ecdsa.wgsl" %}
 {% include "constants.wgsl" %}
-{% include "curve_generators.wgsl" %}
+{% include "secp256k1_curve_generators.wgsl" %}
 {% include "bytes_be_to_limbs_le.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> sig: array<u32, 16>;
