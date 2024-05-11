@@ -78,3 +78,53 @@ fn projective_add_2015_rcb_unsafe(
 
     return Point(x3, y3, z3);
 }
+
+/// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective-3.html#doubling-dbl-2015-rcb
+fn projective_dbl_2015_rcb(
+    a: ptr<function, Point>,
+    p: ptr<function, BigInt>
+) -> Point {
+    var x1 = (*a).x;
+    var y1 = (*a).y;
+    var z1 = (*a).z;
+
+    if (bigint_is_zero(&x1) && bigint_is_zero(&z1)) {
+        return *a;
+    }
+
+    var b3 = get_br3();
+
+    var t0 = mont_mul(&x1, &x1, p);
+    var t1 = mont_mul(&y1, &y1, p);
+    var t2 = mont_mul(&z1, &z1, p);
+    var t3 = mont_mul(&x1, &y1, p);
+    t3 = ff_add(&t3, &t3, p);
+    var z3 = mont_mul(&x1, &z1, p);
+    z3 = ff_add(&z3, &z3, p);
+    var x3 = mont_mul_neg_3(&z3, p);
+    var y3 = mont_mul(&b3, &t2, p);
+    y3 = ff_add(&x3, &y3, p);
+    x3 = ff_sub(&t1, &y3, p);
+    y3 = ff_add(&t1, &y3, p);
+    y3 = mont_mul(&x3, &y3, p);
+    x3 = mont_mul(&t3, &x3, p);
+    z3 = mont_mul(&b3, &z3, p);
+    t2 = mont_mul_neg_3(&t2, p);
+    t3 = ff_sub(&t0, &t2, p);
+    t3 = mont_mul_neg_3(&t3, p);
+    t3 = ff_add(&t3, &z3, p);
+    z3 = ff_add(&t0, &t0, p);
+    t0 = ff_add(&z3, &t0, p);
+    t0 = ff_add(&t0, &t2, p);
+    t0 = mont_mul(&t0, &t3, p);
+    y3 = ff_add(&y3, &t0, p);
+    t2 = mont_mul(&y1, &z1, p);
+    t2 = ff_add(&t2, &t2, p);
+    t0 = mont_mul(&t2, &t3, p);
+    x3 = ff_sub(&x3, &t0, p);
+    z3 = mont_mul(&t2, &t1, p);
+    z3 = ff_add(&z3, &z3, p);
+    z3 = ff_add(&z3, &z3, p);
+
+    return Point(x3, y3, z3);
+}

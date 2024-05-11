@@ -18,3 +18,12 @@ fn test_projective_add_2015_rcb_unsafe(@builtin(global_invocation_id) global_id:
     result = result_pt;
 }
 
+@compute
+@workgroup_size(1)
+fn test_projective_dbl_2015_rcb(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p_bigint = get_p();
+    var a_pt = a;
+    var b_pt = b;
+    var result_pt = projective_dbl_2015_rcb(&a_pt, &p_bigint);
+    result = result_pt;
+}
