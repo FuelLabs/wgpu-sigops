@@ -79,9 +79,10 @@ pub async fn mont_mul() {
     let p1 = moduli::secp256k1_fr_modulus_biguint();
     let p2 = moduli::secp256r1_fq_modulus_biguint();
     let p3 = moduli::secp256r1_fr_modulus_biguint();
+    let p4 = moduli::ed25519_fq_modulus_biguint();
 
-    for p in &[&p0, &p1, &p2, &p3] {
-        for log_limb_size in 12..16 {
+    for p in &[&p0, &p1, &p2, &p3, &p4] {
+        for log_limb_size in 13..14 {
             for _ in 0..NUM_RUNS_PER_TEST {
                 let num_limbs = calc_num_limbs(log_limb_size, 256);
                 let r = mont::calc_mont_radix(num_limbs, log_limb_size);

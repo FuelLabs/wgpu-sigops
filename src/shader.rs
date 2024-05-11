@@ -4,8 +4,7 @@ use ark_ff::{ PrimeField, BigInteger };
 use num_bigint::BigUint;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ bigint, mont, ff, utils::calc_bitwidth };
-use crate::tests::get_secp256k1_b;
-use crate::tests::get_secp256r1_b;
+use crate::tests::{get_secp256k1_b, get_secp256r1_b, get_ed25519_d2 };
 
 fn read_from_file(
     path: &str,
@@ -51,10 +50,6 @@ pub fn do_render(
     let rinv = res.0;
     let n0 = res.1;
 
-    // Used for ECDSA recovery where the s field stores both the s-field and the v-bit
-    let sig_s_high_bit = 2u32.pow(log_limb_size - 1);
-    let sig_s_mask = sig_s_high_bit - 1;
-
     let p_bitlength = calc_bitwidth(&p);
     let slack = num_limbs * log_limb_size as usize - p_bitlength;
 
@@ -97,8 +92,6 @@ pub fn do_render(
         nsafe => nsafe,
         n0 => n0,
         slack => slack,
-        sig_s_high_bit => sig_s_high_bit,
-        sig_s_mask => sig_s_mask,
         r_bigint => r_bigint,
         rinv_bigint => rinv_bigint,
         p_bigint => p_bigint,
@@ -115,6 +108,7 @@ pub fn do_render(
     };
     template.render(context).unwrap()
 }
+
 pub fn render_bytes_to_limbs_test(
     template_path: &str,
     template_file: &str,
@@ -192,6 +186,9 @@ pub fn render_secp256k1_curve_tests(
     let source = read_from_file(template_path, "secp256k1_curve.wgsl");
     env.add_template("secp256k1_curve.wgsl", &source).unwrap();
 
+    let source = read_from_file(template_path, "secp_constants.wgsl");
+    env.add_template("secp_constants.wgsl", &source).unwrap();
+
     let source = read_from_file(template_path, "constants.wgsl");
     env.add_template("constants.wgsl", &source).unwrap();
 
@@ -230,6 +227,9 @@ pub fn render_secp256k1_ecdsa_tests(
 
     let source = read_from_file(template_path, "secp256k1_ecdsa.wgsl");
     env.add_template("secp256k1_ecdsa.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp_constants.wgsl");
+    env.add_template("secp_constants.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "constants.wgsl");
     env.add_template("constants.wgsl", &source).unwrap();
@@ -270,6 +270,9 @@ pub fn render_secp256r1_curve_tests(
     let source = read_from_file(template_path, "secp256r1_curve.wgsl");
     env.add_template("secp256r1_curve.wgsl", &source).unwrap();
 
+    let source = read_from_file(template_path, "secp_constants.wgsl");
+    env.add_template("secp_constants.wgsl", &source).unwrap();
+
     let source = read_from_file(template_path, "constants.wgsl");
     env.add_template("constants.wgsl", &source).unwrap();
 
@@ -309,6 +312,9 @@ pub fn render_secp256r1_ecdsa_tests(
     let source = read_from_file(template_path, "secp256r1_ecdsa.wgsl");
     env.add_template("secp256r1_ecdsa.wgsl", &source).unwrap();
 
+    let source = read_from_file(template_path, "secp_constants.wgsl");
+    env.add_template("secp_constants.wgsl", &source).unwrap();
+
     let source = read_from_file(template_path, "constants.wgsl");
     env.add_template("constants.wgsl", &source).unwrap();
 
@@ -323,4 +329,89 @@ pub fn render_secp256r1_ecdsa_tests(
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
+}
+
+pub fn render_ed25519_curve_tests(
+    template_path: &str,
+    template_file: &str,
+    log_limb_size: u32,
+) -> String {
+    let mut env = Environment::new();
+
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
+    let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
+    let d2 = get_ed25519_d2();
+
+    let source = read_from_file(template_path, "bigint.wgsl");
+    env.add_template("bigint.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ff.wgsl");
+    env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_curve.wgsl");
+    env.add_template("ed25519_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_constants.wgsl");
+    env.add_template("ed25519_constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
+}
+
+pub fn do_render_ed25519(
+    p: &BigUint,
+    scalar_p: &BigUint,
+    d2: &BigUint,
+    log_limb_size: u32,
+    template: &Template,
+) -> String {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let two_pow_word_size = 2u32.pow(log_limb_size);
+    let mask = two_pow_word_size - 1u32;
+    let nsafe = mont::calc_nsafe(log_limb_size);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+    let n0 = res.1;
+
+    let p_bitlength = calc_bitwidth(&p);
+    let slack = num_limbs * log_limb_size as usize - p_bitlength;
+
+    let r_bigint = gen_constant_bigint("r", &(&r % p), num_limbs, log_limb_size);
+    let rinv_bigint = gen_constant_bigint("rinv", &(&rinv % p), num_limbs, log_limb_size);
+    let p_bigint = gen_constant_bigint("p", p, num_limbs, log_limb_size);
+    let scalar_p_bigint = gen_constant_bigint("scalar_p", scalar_p, num_limbs, log_limb_size);
+
+    let d2r = d2 * &r % p;
+    let d2r_bigint = gen_constant_bigint("d2r", &d2r, num_limbs, log_limb_size);
+
+    let mu_fp_bigint = gen_constant_bigint("mu_fp", &ff::gen_mu(&p), num_limbs, log_limb_size);
+    let mu_fr_bigint = gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
+
+    let context = context! {
+        num_limbs => num_limbs,
+        log_limb_size => log_limb_size,
+        two_pow_word_size => two_pow_word_size,
+        mask => mask,
+        nsafe => nsafe,
+        n0 => n0,
+        slack => slack,
+        r_bigint => r_bigint,
+        rinv_bigint => rinv_bigint,
+        p_bigint => p_bigint,
+        scalar_p_bigint => scalar_p_bigint,
+        d2r_bigint => d2r_bigint,
+        mu_fp_bigint => mu_fp_bigint,
+        mu_fr_bigint => mu_fr_bigint,
+    };
+    template.render(context).unwrap()
 }

@@ -3,6 +3,7 @@
 {% include "mont.wgsl" %}
 {% include "secp256k1_curve.wgsl" %}
 {% include "constants.wgsl" %}
+{% include "secp_constants.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> a: Point;
 @group(0) @binding(1) var<storage, read_write> b: Point;

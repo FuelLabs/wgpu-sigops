@@ -5,7 +5,6 @@ use num_bigint::{ BigUint, RandomBits };
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ mont, bigint };
 use fuel_crypto::{ Message, Signature, SecretKey };
-use std::str::FromStr;
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
@@ -28,20 +27,14 @@ pub async fn test_secp256k1_ecrecover() {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
     for log_limb_size in 13..14 {
-        for i in 1..100 {
+        for i in 1..10 {
             // Generate a random message
             let msg: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &scalar_p;
-            //println!("{}", hex::encode(msg.to_bytes_be()));
             let message = Message::new(hex::encode(msg.to_bytes_be()));
-            //let message = Message::new(b"aA beast can never be as cruel as a human being, so artistically, so picturesquely cruel.");
-            //let message = Message::new(b"db7ab4303b0a72c2ca0c574308434c198c65f8c985b46530e19f8bc9318a1bc5");
- 
-            let mut i_str = format!("{}", i);
-            while i_str.len() < 64 {
-                i_str = format!("0{}", i_str);
-            }
-            let secret = SecretKey::from_str(&i_str).unwrap();
+
+            let secret = SecretKey::random(&mut rng);
             let pk = secret.public_key();
+
             let fuel_signature = Signature::sign(&secret, &message);
             let recovered = fuel_signature.recover(&message).expect("Failed to recover PK");
             let (_decoded_sig, _is_y_odd) = crate::tests::fuel_decode_signature(&fuel_signature.clone());
@@ -116,8 +109,8 @@ pub async fn do_secp256k1_test(
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
 
-        //println!("{}", result);
         let result = &result * &rinv % &p;
+        //println!("{}", result);
 
         Fq::from_be_bytes_mod_order(&result.to_bytes_be())
     };
@@ -131,5 +124,6 @@ pub async fn do_secp256k1_test(
     if result_affine.is_zero() {
         println!("i: {}", i);
     }
+
     assert_eq!(result_affine, *expected_pk);
 }

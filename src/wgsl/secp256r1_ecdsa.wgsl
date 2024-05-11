@@ -1,4 +1,4 @@
-fn secp256k1_ecrecover(
+fn secp256r1_ecrecover(
     sig_r_bytes: ptr<function, array<u32, 32>>,
     sig_s_bytes: ptr<function, array<u32, 32>>,
     msg: ptr<function, BigInt>,
@@ -27,7 +27,7 @@ fn secp256k1_ecrecover(
     var r_x = sig_r;
 
     var r_xr = ff_mul(&r_x, r, p, p_wide, mu_fp);
-    var yrs = secp256k1_recover_affine_ys(&r_xr, p);
+    var yrs = secp256r1_recover_affine_ys(&r_xr, p);
     var yr0 = yrs[0];
     var yr1 = yrs[1];
 
@@ -69,7 +69,7 @@ fn secp256k1_ecrecover(
     // compute u2 = r_inv * s;
     var u2 = ff_mul(&r_x_inv, &sig_s, scalar_p, scalar_p_wide, mu_fr);
 
-    var g = get_secp256k1_generator();
+    var g = get_secp256r1_generator();
 
     return projective_strauss_shamir_mul(&g, &recovered_r, &u1, &u2, p);
 }

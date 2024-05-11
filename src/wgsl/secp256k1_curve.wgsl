@@ -4,6 +4,17 @@ struct Point {
     z: BigInt
 }
 
+fn mont_sqrt_case3mod4(
+    xr: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> array<BigInt, 2> {
+    var exponent = get_sqrt_case3mod4_exponent();
+    var r = get_r();
+    var a = modpow(xr, &r, &exponent, p);
+    var b = ff_sub(p, &a, p);
+    return array(a, b);
+}
+
 /// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2007-bl
 /// Unsafe as it does not work with the point at infinity!
 /// Cost: 16M
@@ -282,34 +293,6 @@ fn jacobian_mul(
     }
 
     return result;
-}
-
-struct BitsResult {
-    bits: array<bool, 256>,
-    num_bits: u32
-}
-
-/*
- * Calculate the binary expansion of x, which must not be in Montgomery form.
- * Supports up to 256 bits.
- */
-fn bigint_to_bits_le(
-    x: ptr<function, BigInt>
-) -> BitsResult {
-    var bits: array<bool, 256>;
-    var num_bits = 0u;
-
-    var s = *x;
-
-    while (!bigint_is_zero(&s)) {
-        if (!bigint_is_even(&s)) {
-            bits[num_bits] = true;
-        }
-        s = bigint_div2(&s);
-        num_bits += 1u;
-    }
-
-    return BitsResult(bits, num_bits);
 }
 
 /*

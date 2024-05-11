@@ -14,6 +14,17 @@ fn mont_mul_neg_3(
     return neg_val_3;
 }
 
+fn mont_sqrt_case3mod4(
+    xr: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> array<BigInt, 2> {
+    var exponent = get_sqrt_case3mod4_exponent();
+    var r = get_r();
+    var a = modpow(xr, &r, &exponent, p);
+    var b = ff_sub(p, &a, p);
+    return array(a, b);
+}
+
 /// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective-3.html#addition-add-2015-rcb
 fn projective_add_2015_rcb_unsafe(
     a: ptr<function, Point>,
@@ -151,4 +162,105 @@ fn secp256r1_recover_affine_ys(
     var ys = mont_sqrt_case3mod4(&xr_cubed_plus_ar_plus_br, p);
 
     return ys;
+}
+
+/*
+ * Scalar multiplication using double-and-add
+ */
+fn projective_mul(
+    pt: ptr<function, Point>,
+    x: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> Point {
+    var zero: BigInt;
+    var one: BigInt;
+    one.limbs[0] = 1u;
+
+    var result = Point(zero, one, zero);
+    var result_is_inf = true;
+
+    var s = *x;
+    var temp = *pt;
+
+    while (!bigint_is_zero(&s)) {
+        if (!bigint_is_even(&s)) {
+            if (result_is_inf) {
+                result = temp;
+                result_is_inf = false;
+            } else {
+                result = projective_add_2015_rcb_unsafe(&result, &temp, p);
+            }
+        }
+        temp = projective_dbl_2015_rcb(&temp, p);
+        s = bigint_div2(&s);
+    }
+
+    return result;
+}
+
+/*
+ * Determine ax + by where x and y are scalars and a and b are points.
+ * x and y must not be in Montgomery form.
+ */
+fn projective_strauss_shamir_mul(
+    a: ptr<function, Point>,
+    b: ptr<function, Point>,
+    x: ptr<function, BigInt>,
+    y: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> Point {
+    // From https://github.com/mratsim/constantine/issues/36
+    var zero: BigInt;
+    var one: BigInt;
+    one.limbs[0] = 1u;
+
+    var result = Point(zero, one, zero);
+    var result_is_inf = true;
+
+    var s0 = *x;
+    var s1 = *y;
+
+    // Compute the bit decomposition of the scalars
+    var s0_bitsresult = bigint_to_bits_le(&s0);
+    var s1_bitsresult = bigint_to_bits_le(&s1);
+
+    // Precompute a + b
+    var ab = projective_add_2015_rcb_unsafe(a, b, p);
+    var point_to_add: Point;
+
+    // Determine the length of the longest bitstring to avoid doing more loop
+    // iterations than necessary
+    var max_bits = max(s0_bitsresult.num_bits, s1_bitsresult.num_bits);
+
+    for (var idx = 0u; idx < max_bits; idx ++) {
+        var i = max_bits - 1u - idx;
+
+        let a_bit = s0_bitsresult.bits[i];
+        let b_bit = s1_bitsresult.bits[i];
+
+        if (!result_is_inf) {
+            result = projective_dbl_2015_rcb(&result, p);
+        }
+
+        if (a_bit && !b_bit) {
+            point_to_add = *a;
+        } else if (!a_bit && b_bit) {
+            point_to_add = *b;
+        } else if (a_bit && b_bit) {
+            point_to_add = ab;
+        } else {
+            continue;
+        }
+
+        if (result_is_inf) {
+            // Assign instead of adding point_to_add to the point at
+            // infinity, which jacobian_add_2007_bl_unsafe doesn't support
+            result = point_to_add;
+            result_is_inf = false;
+        } else {
+            result = projective_add_2015_rcb_unsafe(&result, &point_to_add, p);
+        }
+    }
+
+    return result;
 }

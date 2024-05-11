@@ -77,17 +77,6 @@ fn conditional_reduce(x: ptr<function, BigInt>, y: ptr<function, BigInt>) -> Big
     return *x;
 }
 
-fn mont_sqrt_case3mod4(
-    xr: ptr<function, BigInt>,
-    p: ptr<function, BigInt>
-) -> array<BigInt, 2> {
-    var exponent = get_sqrt_case3mod4_exponent();
-    var r = get_r();
-    var a = modpow(xr, &r, &exponent, p);
-    var b = ff_sub(p, &a, p);
-    return array(a, b);
-}
-
 fn modpow(
     xr: ptr<function, BigInt>,
     r: ptr<function, BigInt>,

@@ -193,3 +193,32 @@ fn bigint_div2(
 
     return result;
 }
+
+struct BitsResult {
+    bits: array<bool, 256>,
+    num_bits: u32
+}
+
+/*
+ * Calculate the binary expansion of x, which must not be in Montgomery form.
+ * Supports up to 256 bits.
+ */
+fn bigint_to_bits_le(
+    x: ptr<function, BigInt>
+) -> BitsResult {
+    var bits: array<bool, 256>;
+    var num_bits = 0u;
+
+    var s = *x;
+
+    while (!bigint_is_zero(&s)) {
+        if (!bigint_is_even(&s)) {
+            bits[num_bits] = true;
+        }
+        s = bigint_div2(&s);
+        num_bits += 1u;
+    }
+
+    return BitsResult(bits, num_bits);
+}
+

@@ -27,7 +27,7 @@ fn gen_rng() -> ChaCha8Rng {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn test_bigint_div2() {
+pub async fn bigint_div2() {
     let mut rng = gen_rng();
     let p = moduli::secp256k1_fq_modulus_biguint();
 
@@ -59,12 +59,17 @@ pub async fn test_bigint_div2() {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn test_ff_inverse() {
+pub async fn ff_inverse() {
     let mut rng = gen_rng();
     let p0 = moduli::secp256k1_fq_modulus_biguint();
     let p1 = moduli::secp256k1_fr_modulus_biguint();
     let p2 = moduli::secp256r1_fq_modulus_biguint();
     let p3 = moduli::secp256r1_fr_modulus_biguint();
+    
+    // Note: field inversion for the ed25519 base field should be achieved via the identity
+    // x^-1 = x^(p-2) (mod p) instead
+    let p4 = moduli::ed25519_fq_modulus_biguint();
+    let p5 = moduli::ed25519_fr_modulus_biguint();
 
     let calc_inverse = |a: &BigUint, p: &BigUint| -> BigUint {
         if p == &p0 {
@@ -75,12 +80,16 @@ pub async fn test_ff_inverse() {
             return BigUint::from_bytes_be(&ark_secp256r1::Fq::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap().into_bigint().to_bytes_be());
         } else if p == &p3 {
             return BigUint::from_bytes_be(&ark_secp256r1::Fr::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap().into_bigint().to_bytes_be());
+        } else if p == &p4 {
+            return BigUint::from_bytes_be(&ark_ed25519::Fq::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap().into_bigint().to_bytes_be());
+        } else if p == &p5 {
+            return BigUint::from_bytes_be(&ark_ed25519::Fr::from_be_bytes_mod_order(&a.to_bytes_be()).inverse().unwrap().into_bigint().to_bytes_be());
         } else {
             unimplemented!();
         }
     };
 
-    for p in &[&p0, &p1, &p2, &p3] {
+    for p in &[&p0, &p1, &p2, &p3, &p4, &p5] {
         for log_limb_size in 11..16 {
             let num_limbs = calc_num_limbs(log_limb_size, 256);
 
@@ -210,12 +219,14 @@ pub async fn ff_add() {
     let p1 = moduli::secp256k1_fr_modulus_biguint();
     let p2 = moduli::secp256r1_fq_modulus_biguint();
     let p3 = moduli::secp256r1_fr_modulus_biguint();
+    let p4 = moduli::ed25519_fq_modulus_biguint();
+    let p5 = moduli::ed25519_fr_modulus_biguint();
 
     fn biguint_func(a: &BigUint, b: &BigUint, p: &BigUint) -> BigUint { 
         (a + b) % p
     }
 
-    for p in &[&p0, &p1, &p2, &p3] {
+    for p in &[&p0, &p1, &p2, &p3, &p4, &p5] {
         for log_limb_size in 11..15 {
             let num_limbs = calc_num_limbs(log_limb_size, 256);
 
@@ -237,6 +248,8 @@ pub async fn ff_sub() {
     let p1 = moduli::secp256k1_fr_modulus_biguint();
     let p2 = moduli::secp256r1_fq_modulus_biguint();
     let p3 = moduli::secp256r1_fr_modulus_biguint();
+    let p4 = moduli::ed25519_fq_modulus_biguint();
+    let p5 = moduli::ed25519_fr_modulus_biguint();
 
     fn biguint_func(a: &BigUint, b: &BigUint, p: &BigUint) -> BigUint { 
         if a > b {
@@ -247,7 +260,7 @@ pub async fn ff_sub() {
         }
     }
 
-    for p in &[&p0, &p1, &p2, &p3] {
+    for p in &[&p0, &p1, &p2, &p3, &p4, &p5] {
         for log_limb_size in 11..15 {
             let num_limbs = calc_num_limbs(log_limb_size, 256);
 
@@ -269,8 +282,10 @@ pub async fn ff_mul() {
     let p1 = moduli::secp256k1_fr_modulus_biguint();
     let p2 = moduli::secp256r1_fq_modulus_biguint();
     let p3 = moduli::secp256r1_fr_modulus_biguint();
+    let p4 = moduli::ed25519_fq_modulus_biguint();
+    let p5 = moduli::ed25519_fr_modulus_biguint();
 
-    for p in &[&p0, &p1, &p2, &p3] {
+    for p in &[&p0, &p1, &p2, &p3, &p4, &p5] {
         for log_limb_size in 11..15 {
             for _ in 0..NUM_RUNS_PER_TEST {
                 let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % *p;

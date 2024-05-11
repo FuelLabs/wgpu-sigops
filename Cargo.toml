@@ -12,9 +12,11 @@ wgpu = "0.19.4"
 multiprecision = { git = "https://github.com/geometers/multiprecision.git" }
 ark-secp256k1 = "0.4.0"
 ark-secp256r1 = "0.4.0"
+ark-ed25519 = "0.4.0"
 ark-ff = "0.4.0"
 fuel-algos = { path = "file://../../fuel_algos" }
-fuel-crypto = "0.49.0"
+fuel-crypto = { version = "0.49.0", features = ["random", "test-helpers"] }
+p256 = { version = "0.13.2" }
 
 [dev-dependencies]
 hex = "0.4.3"
