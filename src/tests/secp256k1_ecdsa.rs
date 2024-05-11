@@ -1,5 +1,5 @@
 use ark_ff::{ PrimeField, BigInteger };
-use ark_secp256k1::{ Affine, Fr, Fq };
+use ark_secp256k1::{ Affine, Fq };
 use ark_ec::AffineRepr;
 use num_bigint::{ BigUint, RandomBits };
 use multiprecision::utils::calc_num_limbs;
@@ -9,7 +9,7 @@ use std::str::FromStr;
 use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
-use crate::shader::render_ecdsa_tests;
+use crate::shader::render_secp256k1_ecdsa_tests;
 use crate::gpu::{
     create_empty_sb,
     execute_pipeline,
@@ -20,7 +20,6 @@ use crate::gpu::{
     create_compute_pipeline,
     finish_encoder_and_read_from_gpu,
 };
-use crate::tests::get_secp256k1_b;
 use crate::tests::secp256k1_curve::projective_to_affine_func;
 
 fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
@@ -34,7 +33,7 @@ fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
 #[tokio::test]
 pub async fn test_secp256k1_ecrecover() {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
-    let scalar_p = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16).unwrap();
+    let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
     for log_limb_size in 13..14 {
         for i in 1..100 {
             // Generate a random message
@@ -69,7 +68,7 @@ pub async fn test_secp256k1_ecrecover() {
             
             let msg = BigUint::from_bytes_be(&msg_bytes);
 
-            do_secp256k1_test(i, &sig_bytes, &msg, &pk, log_limb_size, projective_to_affine_func, "ecdsa_tests.wgsl", "test_secp256k1_recover").await;
+            do_secp256k1_test(i, &sig_bytes, &msg, &pk, log_limb_size, projective_to_affine_func, "secp256k1_ecdsa_tests.wgsl", "test_secp256k1_recover").await;
         }
     }
 }
@@ -86,11 +85,7 @@ pub async fn do_secp256k1_test(
 ) {
     let num_limbs = calc_num_limbs(log_limb_size, 256);
 
-    let generator_x = BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_X.into_bigint().to_bytes_be());
-    let generator_y = BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_Y.into_bigint().to_bytes_be());
-
     let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
-    let scalar_p = BigUint::from_bytes_be(&Fr::MODULUS.to_bytes_be());
     let r = mont::calc_mont_radix(num_limbs, log_limb_size);
     let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
     let rinv = res.0;
@@ -99,7 +94,7 @@ pub async fn do_secp256k1_test(
     let msg_limbs = bigint::from_biguint_le(&msg, num_limbs, log_limb_size);
 
     let (device, queue) = get_device_and_queue().await;
-    let source = render_ecdsa_tests("src/wgsl/", filename, &p, &scalar_p, &generator_x, &generator_y, &get_secp256k1_b(), log_limb_size);
+    let source = render_secp256k1_ecdsa_tests("src/wgsl/", filename, log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let sig_u32s: Vec<u32> = bytemuck::cast_slice(&sig_bytes).to_vec();

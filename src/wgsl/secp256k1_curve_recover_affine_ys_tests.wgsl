@@ -1,7 +1,7 @@
 {% include "bigint.wgsl" %}
 {% include "ff.wgsl" %}
 {% include "mont.wgsl" %}
-{% include "curve.wgsl" %}
+{% include "secp256k1_curve.wgsl" %}
 {% include "constants.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> xr: BigInt;

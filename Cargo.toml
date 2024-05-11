@@ -13,6 +13,7 @@ multiprecision = { git = "https://github.com/geometers/multiprecision.git" }
 ark-secp256k1 = "0.4.0"
 ark-secp256r1 = "0.4.0"
 ark-ff = "0.4.0"
+fuel-algos = { path = "file://../../fuel_algos" }
 
 [dev-dependencies]
 hex = "0.4.3"
@@ -22,6 +23,5 @@ rand_chacha = "0.3.1"
 rand = "0.8.5"
 stopwatch = "0.0.7"
 ark-ec = "0.4.0"
-fuel-algos = { path = "file://../../fuel_algos" }
 fuel-crypto = "0.49.0"
 bytemuck = "1.15.0"

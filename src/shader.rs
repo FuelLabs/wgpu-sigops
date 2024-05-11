@@ -1,8 +1,11 @@
 use minijinja::{Environment, Template, context};
 use std::path::PathBuf;
+use ark_ff::{ PrimeField, BigInteger };
 use num_bigint::BigUint;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ bigint, mont, ff, utils::calc_bitwidth };
+use crate::tests::get_secp256k1_b;
+use crate::tests::get_secp256r1_b;
 
 fn read_from_file(
     path: &str,
@@ -35,8 +38,6 @@ pub fn gen_constant_bigint(
 pub fn do_render(
     p: &BigUint,
     scalar_p: &BigUint,
-    generator_x: &BigUint,
-    generator_y: &BigUint,
     b: &BigUint,
     log_limb_size: u32,
     template: &Template,
@@ -65,14 +66,25 @@ pub fn do_render(
     let br = b * &r % p;
     let br_bigint = gen_constant_bigint("br", &br, num_limbs, log_limb_size);
 
+    let br3 = (BigUint::from(3u32) * b * &r) % p;
+    let br3_bigint = gen_constant_bigint("br3", &br3, num_limbs, log_limb_size);
+
     let mu_fp_bigint = gen_constant_bigint("mu_fp", &ff::gen_mu(&p), num_limbs, log_limb_size);
     let mu_fr_bigint = gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
 
-    let generator_xr = generator_x * &r % p;
-    let generator_yr = generator_y * &r % p;
+    let secp256k1_generator_x = BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_X.into_bigint().to_bytes_be());
+    let secp256k1_generator_y = BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_Y.into_bigint().to_bytes_be());
+    let secp256k1_generator_xr = secp256k1_generator_x * &r % p;
+    let secp256k1_generator_yr = secp256k1_generator_y * &r % p;
+    let secp256k1_generator_xr_bigint = gen_constant_bigint("secp256k1_generator_xr", &secp256k1_generator_xr, num_limbs, log_limb_size);
+    let secp256k1_generator_yr_bigint = gen_constant_bigint("secp256k1_generator_yr", &secp256k1_generator_yr, num_limbs, log_limb_size);
 
-    let generator_xr_bigint = gen_constant_bigint("generator_xr", &generator_xr, num_limbs, log_limb_size);
-    let generator_yr_bigint = gen_constant_bigint("generator_yr", &generator_yr, num_limbs, log_limb_size);
+    let secp256r1_generator_x = BigUint::from_bytes_be(&ark_secp256r1::G_GENERATOR_X.into_bigint().to_bytes_be());
+    let secp256r1_generator_y = BigUint::from_bytes_be(&ark_secp256r1::G_GENERATOR_Y.into_bigint().to_bytes_be());
+    let secp256r1_generator_xr = secp256r1_generator_x * &r % p;
+    let secp256r1_generator_yr = secp256r1_generator_y * &r % p;
+    let secp256r1_generator_xr_bigint = gen_constant_bigint("secp256r1_generator_xr", &secp256r1_generator_xr, num_limbs, log_limb_size);
+    let secp256r1_generator_yr_bigint = gen_constant_bigint("secp256r1_generator_yr", &secp256r1_generator_yr, num_limbs, log_limb_size);
 
     let sqrt_case3mod4_exponent = (p + BigUint::from(1u32)) / BigUint::from(4u32);
     let sqrt_case3mod4_exponent_bigint = gen_constant_bigint("sqrt_case3mod4_exponent", &sqrt_case3mod4_exponent, num_limbs, log_limb_size);
@@ -92,10 +104,13 @@ pub fn do_render(
         p_bigint => p_bigint,
         scalar_p_bigint => scalar_p_bigint,
         br_bigint => br_bigint,
+        br3_bigint => br3_bigint,
         mu_fp_bigint => mu_fp_bigint,
         mu_fr_bigint => mu_fr_bigint,
-        generator_xr_bigint => generator_xr_bigint,
-        generator_yr_bigint => generator_yr_bigint,
+        secp256k1_generator_xr_bigint => secp256k1_generator_xr_bigint,
+        secp256k1_generator_yr_bigint => secp256k1_generator_yr_bigint,
+        secp256r1_generator_xr_bigint => secp256r1_generator_xr_bigint,
+        secp256r1_generator_yr_bigint => secp256r1_generator_yr_bigint,
         sqrt_case3mod4_exponent_bigint => sqrt_case3mod4_exponent_bigint,
     };
     template.render(context).unwrap()
@@ -122,7 +137,7 @@ pub fn render_bytes_to_limbs_test(
     env.add_template(template_file, &source).unwrap();
 
     let template = env.get_template(template_file).unwrap();
-    do_render(p, p, p, p, b, log_limb_size, &template)
+    do_render(p, p, b, log_limb_size, &template)
 }
 
 pub fn render_bigint_ff_mont_tests(
@@ -150,17 +165,19 @@ pub fn render_bigint_ff_mont_tests(
     env.add_template(template_file, &source).unwrap();
 
     let template = env.get_template(template_file).unwrap();
-    do_render(p, p, p, p, b, log_limb_size, &template)
+    do_render(p, p, b, log_limb_size, &template)
 }
 
-pub fn render_curve_tests(
+pub fn render_secp256k1_curve_tests(
     template_path: &str,
     template_file: &str,
-    p: &BigUint,
-    b: &BigUint,
     log_limb_size: u32,
 ) -> String {
     let mut env = Environment::new();
+
+    let p = crate::moduli::secp256k1_fq_modulus_biguint();
+    let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
+    let b = get_secp256k1_b();
 
     let source = read_from_file(template_path, "bigint.wgsl");
     env.add_template("bigint.wgsl", &source).unwrap();
@@ -171,8 +188,8 @@ pub fn render_curve_tests(
     let source = read_from_file(template_path, "mont.wgsl");
     env.add_template("mont.wgsl", &source).unwrap();
 
-    let source = read_from_file(template_path, "curve.wgsl");
-    env.add_template("curve.wgsl", &source).unwrap();
+    let source = read_from_file(template_path, "secp256k1_curve.wgsl");
+    env.add_template("secp256k1_curve.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "constants.wgsl");
     env.add_template("constants.wgsl", &source).unwrap();
@@ -181,20 +198,19 @@ pub fn render_curve_tests(
     env.add_template(template_file, &source).unwrap();
 
     let template = env.get_template(template_file).unwrap();
-    do_render(p, p, p, p, b, log_limb_size, &template)
+    do_render(&p, &scalar_p, &b, log_limb_size, &template)
 }
 
-pub fn render_ecdsa_tests(
+pub fn render_secp256k1_ecdsa_tests(
     template_path: &str,
     template_file: &str,
-    p: &BigUint,
-    scalar_p: &BigUint,
-    generator_x: &BigUint,
-    generator_y: &BigUint,
-    b: &BigUint,
     log_limb_size: u32,
 ) -> String {
     let mut env = Environment::new();
+
+    let b = get_secp256k1_b();
+    let p = crate::moduli::secp256k1_fq_modulus_biguint();
+    let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
 
     let source = read_from_file(template_path, "bigint.wgsl");
     env.add_template("bigint.wgsl", &source).unwrap();
@@ -205,17 +221,17 @@ pub fn render_ecdsa_tests(
     let source = read_from_file(template_path, "mont.wgsl");
     env.add_template("mont.wgsl", &source).unwrap();
 
-    let source = read_from_file(template_path, "curve.wgsl");
-    env.add_template("curve.wgsl", &source).unwrap();
+    let source = read_from_file(template_path, "secp256k1_curve.wgsl");
+    env.add_template("secp256k1_curve.wgsl", &source).unwrap();
 
-    let source = read_from_file(template_path, "ecdsa.wgsl");
-    env.add_template("ecdsa.wgsl", &source).unwrap();
+    let source = read_from_file(template_path, "secp256k1_ecdsa.wgsl");
+    env.add_template("secp256k1_ecdsa.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "constants.wgsl");
     env.add_template("constants.wgsl", &source).unwrap();
 
-    let source = read_from_file(template_path, "curve_generators.wgsl");
-    env.add_template("curve_generators.wgsl", &source).unwrap();
+    let source = read_from_file(template_path, "secp256k1_curve_generators.wgsl");
+    env.add_template("secp256k1_curve_generators.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
     env.add_template("bytes_be_to_limbs_le.wgsl", &source).unwrap();
@@ -224,5 +240,80 @@ pub fn render_ecdsa_tests(
     env.add_template(template_file, &source).unwrap();
 
     let template = env.get_template(template_file).unwrap();
-    do_render(p, scalar_p, generator_x, generator_y, b, log_limb_size, &template)
+    do_render(&p, &scalar_p, &b, log_limb_size, &template)
+}
+
+pub fn render_secp256r1_curve_tests(
+    template_path: &str,
+    template_file: &str,
+    log_limb_size: u32,
+) -> String {
+    let mut env = Environment::new();
+
+    let p = crate::moduli::secp256r1_fq_modulus_biguint();
+    let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
+    let b = get_secp256r1_b();
+
+    let source = read_from_file(template_path, "bigint.wgsl");
+    env.add_template("bigint.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ff.wgsl");
+    env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp256r1_curve.wgsl");
+    env.add_template("secp256r1_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render(&p, &scalar_p, &b, log_limb_size, &template)
+}
+
+pub fn render_secp256r1_ecdsa_tests(
+    template_path: &str,
+    template_file: &str,
+    log_limb_size: u32,
+) -> String {
+    let mut env = Environment::new();
+
+    let p = crate::moduli::secp256r1_fq_modulus_biguint();
+    let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
+    let b = get_secp256r1_b();
+
+    let source = read_from_file(template_path, "bigint.wgsl");
+    env.add_template("bigint.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ff.wgsl");
+    env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp256r1_curve.wgsl");
+    env.add_template("secp256r1_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp256r1_ecdsa.wgsl");
+    env.add_template("secp256r1_ecdsa.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp256r1_curve_generators.wgsl");
+    env.add_template("secp256r1_curve_generators.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
+    env.add_template("bytes_be_to_limbs_le.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render(&p, &scalar_p, &b, log_limb_size, &template)
 }
