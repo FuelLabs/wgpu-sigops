@@ -71,3 +71,70 @@ fn ete_dbl_2008_hwcd(
 
     return ETEPoint(x3, y3, t3, z3);
 }
+
+/*
+ * Determine ax + by where x and y are scalars and a and b are points.
+ * x and y must not be in Montgomery form.
+ */
+fn ete_strauss_shamir_mul(
+    a: ptr<function, ETEPoint>,
+    b: ptr<function, ETEPoint>,
+    x: ptr<function, BigInt>,
+    y: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> ETEPoint {
+    // From https://github.com/mratsim/constantine/issues/36
+    var zero: BigInt;
+    var one: BigInt;
+    one.limbs[0] = 1u;
+
+    var result = ETEPoint(zero, one, zero, one);
+    var result_is_inf = true;
+
+    var s0 = *x;
+    var s1 = *y;
+
+    // Compute the bit decomposition of the scalars
+    var s0_bitsresult = bigint_to_bits_le(&s0);
+    var s1_bitsresult = bigint_to_bits_le(&s1);
+
+    // Precompute a + b
+    var ab = ete_add_2008_hwcd_3(a, b, p);
+    var point_to_add: ETEPoint;
+
+    // Determine the length of the longest bitstring to avoid doing more loop
+    // iterations than necessary
+    var max_bits = max(s0_bitsresult.num_bits, s1_bitsresult.num_bits);
+
+    for (var idx = 0u; idx < max_bits; idx ++) {
+        var i = max_bits - 1u - idx;
+
+        let a_bit = s0_bitsresult.bits[i];
+        let b_bit = s1_bitsresult.bits[i];
+
+        if (!result_is_inf) {
+            result = ete_dbl_2008_hwcd(&result, p);
+        }
+
+        if (a_bit && !b_bit) {
+            point_to_add = *a;
+        } else if (!a_bit && b_bit) {
+            point_to_add = *b;
+        } else if (a_bit && b_bit) {
+            point_to_add = ab;
+        } else {
+            continue;
+        }
+
+        if (result_is_inf) {
+            // Assign instead of adding point_to_add to the point at
+            // infinity, which jacobian_add_2007_bl_unsafe doesn't support
+            result = point_to_add;
+            result_is_inf = false;
+        } else {
+            result = ete_add_2008_hwcd_3(&result, &point_to_add, p);
+        }
+    }
+
+    return result;
+}
