@@ -17,7 +17,7 @@ use crate::gpu::{
     create_compute_pipeline,
     finish_encoder_and_read_from_gpu,
 };
-use crate::shader::render_bigint_ff_mont_tests;
+use crate::shader::{ render_bigint_ff_mont_tests, render_mont_sqrt_case3mod4_test };
 use crate::tests::get_secp256k1_b;
 
 fn gen_rng() -> ChaCha8Rng {
@@ -292,7 +292,7 @@ pub async fn do_mont_sqrt_case3mod4_test(
     let result_a_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
     let result_b_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_mont_sqrt_case3mod4_test("src/wgsl/", filename, &p, log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);

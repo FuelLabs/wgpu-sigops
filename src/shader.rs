@@ -162,6 +162,41 @@ pub fn render_bigint_ff_mont_tests(
     do_render(p, p, b, log_limb_size, &template)
 }
 
+pub fn render_mont_sqrt_case3mod4_test(
+    template_path: &str,
+    template_file: &str,
+    p: &BigUint,
+    log_limb_size: u32,
+) -> String {
+    let mut env = Environment::new();
+
+    let b = get_secp256k1_b();
+
+    let source = read_from_file(template_path, "bigint.wgsl");
+    env.add_template("bigint.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ff.wgsl");
+    env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp256k1_curve.wgsl");
+    env.add_template("secp256k1_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp_constants.wgsl");
+    env.add_template("secp_constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render(&p, &p, &b, log_limb_size, &template)
+}
+
 pub fn render_secp256k1_curve_tests(
     template_path: &str,
     template_file: &str,

@@ -10,7 +10,7 @@ use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ mont, bigint };
 use fuel_algos::ed25519_curve as curve;
 use fuel_algos::coords;
-use crate::tests::{ fq_to_biguint, eteprojective_to_mont_limbs };
+use crate::tests::eteprojective_to_mont_limbs;
 use crate::shader::render_ed25519_curve_tests;
 use crate::gpu::{
     create_empty_sb,
