@@ -1,6 +1,6 @@
 use minijinja::{Environment, Template, context};
 use std::path::PathBuf;
-use ark_ff::{ PrimeField, BigInteger };
+use ark_ff::{Field, PrimeField, BigInteger};
 use num_bigint::BigUint;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ bigint, mont, ff, utils::calc_bitwidth };
@@ -432,6 +432,14 @@ pub fn do_render_ed25519(
     let mu_fp_bigint = gen_constant_bigint("mu_fp", &ff::gen_mu(&p), num_limbs, log_limb_size);
     let mu_fr_bigint = gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
 
+    let p58_exponent = BigUint::parse_bytes(b"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd", 16).unwrap();
+    assert_eq!(p58_exponent, (p - BigUint::from(5u32)) / BigUint::from(8u32));
+    let p58_exponent_bigint = gen_constant_bigint("p58_exponent", &p58_exponent, num_limbs, log_limb_size);
+
+    let sqrt_m1 = ark_ed25519::Fq::from(-1i32).sqrt().unwrap();
+    let sqrt_m1_bigint: BigUint = sqrt_m1.into_bigint().into();
+    let sqrt_m1r_bigint = gen_constant_bigint("sqrt_m1r", &(sqrt_m1_bigint * r % p), num_limbs, log_limb_size);
+
     let context = context! {
         num_limbs => num_limbs,
         log_limb_size => log_limb_size,
@@ -447,6 +455,48 @@ pub fn do_render_ed25519(
         d2r_bigint => d2r_bigint,
         mu_fp_bigint => mu_fp_bigint,
         mu_fr_bigint => mu_fr_bigint,
+        p58_exponent_bigint => p58_exponent_bigint,
+        sqrt_m1r_bigint => sqrt_m1r_bigint,
     };
+
     template.render(context).unwrap()
+}
+
+pub fn render_ed25519_utils_tests(
+    template_path: &str,
+    template_file: &str,
+    log_limb_size: u32,
+) -> String {
+    let mut env = Environment::new();
+
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
+    let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
+    let d2 = get_ed25519_d2();
+
+    let source = read_from_file(template_path, "bigint.wgsl");
+    env.add_template("bigint.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ff.wgsl");
+    env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_curve.wgsl");
+    env.add_template("ed25519_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_constants.wgsl");
+    env.add_template("ed25519_constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_utils.wgsl");
+    env.add_template("ed25519_utils.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
 }

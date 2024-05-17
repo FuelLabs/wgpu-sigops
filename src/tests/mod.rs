@@ -13,6 +13,8 @@ pub mod secp256r1_ecdsa;
 #[cfg(test)]
 pub mod ed25519_curve;
 #[cfg(test)]
+pub mod ed25519_eddsa;
+#[cfg(test)]
 pub mod bytes_to_limbs;
 
 use ark_ff::BigInteger;
