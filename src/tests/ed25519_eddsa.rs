@@ -1,10 +1,11 @@
 use num_bigint::{RandomBits, BigUint};
-use ark_ff::{PrimeField};
+use ark_ff::{PrimeField, BigInteger};
 use ark_ec::{CurveGroup, AffineRepr};
 use std::ops::Mul;
 use ark_ed25519::{EdwardsProjective as Projective, EdwardsAffine as Affine, Fr, Fq};
 use fuel_algos::coords;
 use fuel_algos::ed25519_eddsa::{
+    decompress_to_ete_unsafe,
     is_negative,
     conditional_assign,
     conditional_negate,
@@ -125,22 +126,104 @@ pub async fn sqrt_ratio_i_test() {
 pub async fn reconstruct_ete_point_from_y() {
     let p = crate::moduli::ed25519_fq_modulus_biguint();
 
-    let mut rng = ChaCha8Rng::seed_from_u64(3);
+    let mut rng = ChaCha8Rng::seed_from_u64(1);
 
-    for log_limb_size in 13..14 {
-        for _ in 0..1 {
+    for log_limb_size in 11..15 {
+        for _ in 0..30 {
             let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
             let g = Affine::generator();
             let a: Projective = g.mul(s).into_affine().into();
             let a = coords::ETEProjective::<Fq> {x: a.x, y: a.y, t: a.t, z: a.z };
+            assert_eq!(a.t, a.x * a.y);
+            assert_eq!(a.z, Fq::from(1u32));
 
-            do_reconstruct_ete_point_from_uncompressed_y_test(&a, &p, log_limb_size).await;
+            do_reconstruct_ete_point_from_y_test(&a, &p, log_limb_size).await;
         }
     }
 }
 
-pub async fn do_reconstruct_ete_point_from_uncompressed_y_test(a: &coords::ETEProjective<Fq>, p: &BigUint, log_limb_size: u32) {
+#[serial_test::serial]
+#[tokio::test]
+pub async fn reconstruct_ete_point_from_y_invalid() {
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
+
+    let mut rng = ChaCha8Rng::seed_from_u64(1);
+
+    for log_limb_size in 11..15 {
+        for _ in 0..10 {
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+            let g = Affine::generator();
+            let a: Projective = g.mul(s).into_affine().into();
+            let a = coords::ETEProjective::<Fq> {x: a.x, y: a.y, t: a.t, z: a.z };
+            assert_eq!(a.t, a.x * a.y);
+            assert_eq!(a.z, Fq::from(1u32));
+
+            // Search for an invalid y-coordinate
+            let mut i = 1u32;
+            let mut new_y: Fq;
+            let mut x_sign: u8;
+
+            loop {
+                new_y = a.y + Fq::from(i);
+                let mut y_bytes = new_y.into_bigint().to_bytes_le();
+                x_sign = y_bytes[31] >> 7u8;
+                y_bytes[31] &= 0x7f;
+
+                new_y = Fq::from_le_bytes_mod_order(&y_bytes);
+
+                let new_pt_unsafe = decompress_to_ete_unsafe(y_bytes.as_slice().try_into().unwrap());
+                if !new_pt_unsafe.0 {
+                    break
+                }
+
+                i += 1u32;
+            }
+            do_reconstruct_ete_point_from_y_invalid_test(&new_y, x_sign, &p, log_limb_size).await;
+        }
+    }
+}
+
+pub async fn do_reconstruct_ete_point_from_y_invalid_test(y: &Fq, x_sign: u8, p: &BigUint, log_limb_size: u32) {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+
+    let y_bigint: BigUint = y.into_bigint().into();
+    let yr_limbs = bigint::from_biguint_le(&(y_bigint * &r % p), num_limbs, log_limb_size);
+
+    let (device, queue) = get_device_and_queue().await;
+    let yr_buf = create_sb_with_data(&device, &yr_limbs);
+    let x_sign_buf = create_sb_with_data(&device, &[x_sign as u32]);
+    let result_buf = create_empty_sb(&device, yr_buf.size() * 4);
+    let is_valid_buf = create_empty_sb(&device, x_sign_buf.size());
+
+    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_reconstruct_ete_from_y_tests.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "test_reconstruct_ete_from_y");
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&yr_buf, &x_sign_buf, &result_buf, &is_valid_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[is_valid_buf],
+    ).await;
+    assert!(results[0][0] == 0);
+}
+
+pub async fn do_reconstruct_ete_point_from_y_test(a: &coords::ETEProjective<Fq>, p: &BigUint, log_limb_size: u32) {
+    let x_sign = if is_negative(a.x) { 1u32 } else { 0u32 };
+
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let r = mont::calc_mont_radix(num_limbs, log_limb_size);
     let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
@@ -151,11 +234,12 @@ pub async fn do_reconstruct_ete_point_from_uncompressed_y_test(a: &coords::ETEPr
 
     let (device, queue) = get_device_and_queue().await;
     let yr_buf = create_sb_with_data(&device, &yr_limbs);
+    let x_sign_buf = create_sb_with_data(&device, &[x_sign]);
     let result_buf = create_empty_sb(&device, yr_buf.size() * 4);
-    let is_valid_buf = create_empty_sb(&device, yr_buf.size());
+    let is_valid_buf = create_empty_sb(&device, x_sign_buf.size());
 
-    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_reconstruct_ete_from_uncompressed_y_tests.wgsl", log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, "test_reconstruct_ete_from_uncompressed_y");
+    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_reconstruct_ete_from_y_tests.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "test_reconstruct_ete_from_y");
 
     let mut command_encoder = create_command_encoder(&device);
 
@@ -163,14 +247,14 @@ pub async fn do_reconstruct_ete_point_from_uncompressed_y_test(a: &coords::ETEPr
         &device,
         &compute_pipeline,
         0,
-        &[&yr_buf, &result_buf, &is_valid_buf],
+        &[&yr_buf, &x_sign_buf, &result_buf, &is_valid_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
-        let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
-        let result = &result_x_r * &rinv % p;
+        let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        let result = &result_r * &rinv % p;
 
         Fq::from_be_bytes_mod_order(&result.to_bytes_be())
     };
@@ -181,6 +265,9 @@ pub async fn do_reconstruct_ete_point_from_uncompressed_y_test(a: &coords::ETEPr
         Box::new(command_encoder),
         &[result_buf, is_valid_buf],
     ).await;
+
+    let is_valid_y_coord = results[1][0] == 1;
+    assert!(is_valid_y_coord);
 
     let recovered_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
     let recovered_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());

@@ -100,7 +100,10 @@ fn reconstruct_ete_from_y(
     var dr = get_edwards_d();
     var zr = get_r();
 
+    /*return ReconstructETEFromYResult(false, ETEPoint(*yr, zr, zr, zr));*/
+
     var yyr = mont_mul(yr, yr, p);
+
     var u = ff_sub(&yyr, &zr, p);
 
     var yyd = mont_mul(&yyr, &dr, p);
@@ -116,4 +119,6 @@ fn reconstruct_ete_from_y(
     var tr = mont_mul(&xr, yr, p);
 
     return ReconstructETEFromYResult(r.was_nonzero_square, ETEPoint(xr, *yr, tr, zr));
+/*
+    */
 }
