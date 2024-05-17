@@ -1,6 +1,7 @@
 use minijinja::{Environment, Template, context};
 use std::path::PathBuf;
 use ark_ff::{Field, PrimeField, BigInteger};
+use ark_ec::twisted_edwards::TECurveConfig;
 use num_bigint::BigUint;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ bigint, mont, ff, utils::calc_bitwidth };
@@ -438,7 +439,10 @@ pub fn do_render_ed25519(
 
     let sqrt_m1 = ark_ed25519::Fq::from(-1i32).sqrt().unwrap();
     let sqrt_m1_bigint: BigUint = sqrt_m1.into_bigint().into();
-    let sqrt_m1r_bigint = gen_constant_bigint("sqrt_m1r", &(sqrt_m1_bigint * r % p), num_limbs, log_limb_size);
+    let sqrt_m1r_bigint = gen_constant_bigint("sqrt_m1r", &(sqrt_m1_bigint * &r % p), num_limbs, log_limb_size);
+
+    let edwards_d: BigUint = ark_ed25519::EdwardsConfig::COEFF_D.into_bigint().into();
+    let edwards_d_bigint = gen_constant_bigint("edwards_d", &(edwards_d * &r % p), num_limbs, log_limb_size);
 
     let context = context! {
         num_limbs => num_limbs,
@@ -457,6 +461,7 @@ pub fn do_render_ed25519(
         mu_fr_bigint => mu_fr_bigint,
         p58_exponent_bigint => p58_exponent_bigint,
         sqrt_m1r_bigint => sqrt_m1r_bigint,
+        edwards_d_bigint => edwards_d_bigint,
     };
 
     template.render(context).unwrap()

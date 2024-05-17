@@ -86,3 +86,34 @@ fn sqrt_ratio_i(
 
     return SqrtRatioIResult(was_nonzero_square, r);
 }
+
+struct ReconstructETEFromYResult {
+    is_valid_y_coord: bool,
+    pt: ETEPoint,
+}
+
+fn reconstruct_ete_from_y(
+    yr: ptr<function, BigInt>,
+    is_compressed: bool,
+    p: ptr<function, BigInt>,
+) -> ReconstructETEFromYResult {
+    var dr = get_edwards_d();
+    var zr = get_r();
+
+    var yyr = mont_mul(yr, yr, p);
+    var u = ff_sub(&yyr, &zr, p);
+
+    var yyd = mont_mul(&yyr, &dr, p);
+    var v = ff_add(&yyd, &zr, p);
+
+    var r = sqrt_ratio_i(&u, &v, p);
+    /* TODO: assert!(r.was_nonzero_square);*/
+    // Should return 0 if this is false
+
+    var xr = r.r;
+    xr = conditional_negate(&xr, p, is_compressed);
+
+    var tr = mont_mul(&xr, yr, p);
+
+    return ReconstructETEFromYResult(r.was_nonzero_square, ETEPoint(xr, *yr, tr, zr));
+}

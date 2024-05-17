@@ -1,6 +1,9 @@
 use num_bigint::{RandomBits, BigUint};
 use ark_ff::{PrimeField};
-use ark_ed25519::Fq;
+use ark_ec::{CurveGroup, AffineRepr};
+use std::ops::Mul;
+use ark_ed25519::{EdwardsProjective as Projective, EdwardsAffine as Affine, Fr, Fq};
+use fuel_algos::coords;
 use fuel_algos::ed25519_eddsa::{
     is_negative,
     conditional_assign,
@@ -115,6 +118,79 @@ pub async fn sqrt_ratio_i_test() {
             do_sqrt_ratio_i_test(&u, &v, &p, log_limb_size).await;
         }
     }
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn reconstruct_ete_point_from_y() {
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
+
+    let mut rng = ChaCha8Rng::seed_from_u64(3);
+
+    for log_limb_size in 13..14 {
+        for _ in 0..1 {
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+            let g = Affine::generator();
+            let a: Projective = g.mul(s).into_affine().into();
+            let a = coords::ETEProjective::<Fq> {x: a.x, y: a.y, t: a.t, z: a.z };
+
+            do_reconstruct_ete_point_from_uncompressed_y_test(&a, &p, log_limb_size).await;
+        }
+    }
+}
+
+pub async fn do_reconstruct_ete_point_from_uncompressed_y_test(a: &coords::ETEProjective<Fq>, p: &BigUint, log_limb_size: u32) {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+
+    let ay: BigUint = a.y.into_bigint().into();
+    let yr_limbs = bigint::from_biguint_le(&(ay * &r % p), num_limbs, log_limb_size);
+
+    let (device, queue) = get_device_and_queue().await;
+    let yr_buf = create_sb_with_data(&device, &yr_limbs);
+    let result_buf = create_empty_sb(&device, yr_buf.size() * 4);
+    let is_valid_buf = create_empty_sb(&device, yr_buf.size());
+
+    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_reconstruct_ete_from_uncompressed_y_tests.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "test_reconstruct_ete_from_uncompressed_y");
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&yr_buf, &result_buf, &is_valid_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let convert_result_coord = |data: &Vec<u32>| -> Fq {
+        let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        let result = &result_x_r * &rinv % p;
+
+        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
+    };
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf, is_valid_buf],
+    ).await;
+
+    let recovered_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
+    let recovered_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
+    let recovered_t = convert_result_coord(&results[0][(num_limbs * 2)..(num_limbs * 3)].to_vec());
+    let recovered_z = convert_result_coord(&results[0][(num_limbs * 3)..(num_limbs * 4)].to_vec());
+
+    assert_eq!(recovered_x, a.x);
+    assert_eq!(recovered_y, a.y);
+    assert_eq!(recovered_t, a.t);
+    assert_eq!(recovered_z, a.z);
 }
 
 pub async fn do_sqrt_ratio_i_test(u: &BigUint, v: &BigUint, p: &BigUint, log_limb_size: u32) {
