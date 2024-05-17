@@ -2277,6 +2277,7 @@ dependencies = [
  "ark-secp256r1",
  "bytemuck",
  "curve25519-dalek",
+ "ed25519-dalek",
  "fuel-algos",
  "fuel-crypto",
  "futures-intrusive",

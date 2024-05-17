@@ -5,6 +5,7 @@ use std::ops::Mul;
 use ark_ed25519::{EdwardsProjective as Projective, EdwardsAffine as Affine, Fr, Fq};
 use fuel_algos::coords;
 use fuel_algos::ed25519_eddsa::{
+    decompress_to_ete,
     decompress_to_ete_unsafe,
     is_negative,
     conditional_assign,
@@ -14,9 +15,10 @@ use fuel_algos::ed25519_eddsa::{
 use multiprecision::{mont, bigint};
 use multiprecision::utils::calc_num_limbs;
 use rand::Rng;
+use rand::RngCore;
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
-use crate::shader::render_ed25519_utils_tests;
+use crate::shader::{render_ed25519_verify_tests, render_ed25519_utils_tests};
 use crate::gpu::{
     create_empty_sb,
     execute_pipeline,
@@ -27,6 +29,104 @@ use crate::gpu::{
     create_compute_pipeline,
     finish_encoder_and_read_from_gpu,
 };
+use ed25519_dalek::{ VerifyingKey, SigningKey, Signature, Signer, Verifier };
+use fuel_algos::ed25519_eddsa::{ark_ecverify, compute_hash};
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn verify() {
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
+
+    let mut rng = ChaCha8Rng::seed_from_u64(1);
+
+    for log_limb_size in 11..15 {
+        for _ in 0..20 {
+            let mut message = [0u8; 100];
+            rng.fill_bytes(&mut message);
+            let signing_key: SigningKey = SigningKey::generate(&mut rng);
+            let verifying_key = signing_key.verifying_key();
+            let signature: Signature = signing_key.sign(&message);
+
+            assert!(verifying_key.verify(&message, &signature).is_ok());
+
+            do_verify_test(&verifying_key, &signature, &message, &p, log_limb_size).await;
+        }
+    }
+}
+
+pub async fn do_verify_test(
+    verifying_key: &VerifyingKey,
+    signature: &Signature,
+    message: &[u8],
+    p: &BigUint,
+    log_limb_size: u32
+) {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+
+    let ark_recovered = ark_ecverify(&verifying_key, &signature, &message);
+
+    let s_bytes = signature.s_bytes();
+    let a_bytes = verifying_key.as_bytes();
+
+    let hash = compute_hash(&verifying_key, &signature, &message);
+    let s: BigUint = Fr::from_le_bytes_mod_order(s_bytes).into_bigint().into();
+    let k: BigUint = Fr::from_le_bytes_mod_order(&hash).into_bigint().into();
+
+    let s_limbs = bigint::from_biguint_le(&s, num_limbs, log_limb_size);
+    let k_limbs = bigint::from_biguint_le(&k, num_limbs, log_limb_size);
+
+    let a = decompress_to_ete(*a_bytes);
+    let ay: BigUint = a.y.into_bigint().into();
+    let ayr_limbs = bigint::from_biguint_le(&(ay * &r % p), num_limbs, log_limb_size);
+    let x_sign = if is_negative(a.x) { 1u32 } else { 0u32 };
+
+    let (device, queue) = get_device_and_queue().await;
+
+    let s_buf = create_sb_with_data(&device, &s_limbs);
+    let k_buf = create_sb_with_data(&device, &k_limbs);
+    let ayr_buf = create_sb_with_data(&device, &ayr_limbs);
+    let x_sign_buf = create_sb_with_data(&device, &[x_sign as u32]);
+    let result_buf = create_empty_sb(&device, ayr_buf.size() * 4);
+
+    let source = render_ed25519_verify_tests("src/wgsl/", "ed25519_verify_tests.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "test_verify");
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&s_buf, &k_buf, &ayr_buf, &x_sign_buf, &result_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let convert_result_coord = |data: &Vec<u32>| -> Fq {
+        let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        let result = &result_r * &rinv % p;
+
+        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
+    };
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf],
+    ).await;
+
+    let recovered_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
+    let recovered_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
+    let recovered_t = convert_result_coord(&results[0][(num_limbs * 2)..(num_limbs * 3)].to_vec());
+    let recovered_z = convert_result_coord(&results[0][(num_limbs * 3)..(num_limbs * 4)].to_vec());
+
+    let recovered = Projective::new(recovered_x, recovered_y, recovered_t, recovered_z);
+    assert_eq!(recovered, ark_recovered);
+}
 
 #[serial_test::serial]
 #[tokio::test]

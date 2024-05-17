@@ -97,10 +97,8 @@ fn reconstruct_ete_from_y(
     is_compressed: bool,
     p: ptr<function, BigInt>,
 ) -> ReconstructETEFromYResult {
-    var dr = get_edwards_d();
+    var dr = get_edwards_dr();
     var zr = get_r();
-
-    /*return ReconstructETEFromYResult(false, ETEPoint(*yr, zr, zr, zr));*/
 
     var yyr = mont_mul(yr, yr, p);
 
@@ -119,6 +117,4 @@ fn reconstruct_ete_from_y(
     var tr = mont_mul(&xr, yr, p);
 
     return ReconstructETEFromYResult(r.was_nonzero_square, ETEPoint(xr, *yr, tr, zr));
-/*
-    */
 }

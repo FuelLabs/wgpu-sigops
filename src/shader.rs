@@ -2,10 +2,12 @@ use minijinja::{Environment, Template, context};
 use std::path::PathBuf;
 use ark_ff::{Field, PrimeField, BigInteger};
 use ark_ec::twisted_edwards::TECurveConfig;
+use ark_ec::AffineRepr;
 use num_bigint::BigUint;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{ bigint, mont, ff, utils::calc_bitwidth };
 use crate::tests::{get_secp256k1_b, get_secp256r1_b, get_ed25519_d2 };
+use ark_ed25519::EdwardsAffine;
 
 fn read_from_file(
     path: &str,
@@ -441,8 +443,18 @@ pub fn do_render_ed25519(
     let sqrt_m1_bigint: BigUint = sqrt_m1.into_bigint().into();
     let sqrt_m1r_bigint = gen_constant_bigint("sqrt_m1r", &(sqrt_m1_bigint * &r % p), num_limbs, log_limb_size);
 
-    let edwards_d: BigUint = ark_ed25519::EdwardsConfig::COEFF_D.into_bigint().into();
-    let edwards_d_bigint = gen_constant_bigint("edwards_d", &(edwards_d * &r % p), num_limbs, log_limb_size);
+    let edwards_dr: BigUint = ark_ed25519::EdwardsConfig::COEFF_D.into_bigint().into();
+    let edwards_dr_bigint = gen_constant_bigint("edwards_dr", &(edwards_dr * &r % p), num_limbs, log_limb_size);
+
+    let generator = EdwardsAffine::generator();
+    let ed25519_generator_x = BigUint::from_bytes_be(&generator.x.into_bigint().to_bytes_be());
+    let ed25519_generator_y = BigUint::from_bytes_be(&generator.y.into_bigint().to_bytes_be());
+    let ed25519_generator_xr = &ed25519_generator_x * &r % p;
+    let ed25519_generator_yr = &ed25519_generator_y * &r % p;
+    let ed25519_generator_tr = (&ed25519_generator_x * &ed25519_generator_y) * &r % p;
+    let ed25519_generator_xr_bigint = gen_constant_bigint("ed25519_generator_xr", &ed25519_generator_xr, num_limbs, log_limb_size);
+    let ed25519_generator_yr_bigint = gen_constant_bigint("ed25519_generator_yr", &ed25519_generator_yr, num_limbs, log_limb_size);
+    let ed25519_generator_tr_bigint = gen_constant_bigint("ed25519_generator_tr", &ed25519_generator_tr, num_limbs, log_limb_size);
 
     let context = context! {
         num_limbs => num_limbs,
@@ -461,7 +473,10 @@ pub fn do_render_ed25519(
         mu_fr_bigint => mu_fr_bigint,
         p58_exponent_bigint => p58_exponent_bigint,
         sqrt_m1r_bigint => sqrt_m1r_bigint,
-        edwards_d_bigint => edwards_d_bigint,
+        edwards_dr_bigint => edwards_dr_bigint,
+        ed25519_generator_xr_bigint => ed25519_generator_xr_bigint,
+        ed25519_generator_yr_bigint => ed25519_generator_yr_bigint,
+        ed25519_generator_tr_bigint => ed25519_generator_tr_bigint,
     };
 
     template.render(context).unwrap()
@@ -498,6 +513,48 @@ pub fn render_ed25519_utils_tests(
 
     let source = read_from_file(template_path, "ed25519_utils.wgsl");
     env.add_template("ed25519_utils.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
+}
+
+pub fn render_ed25519_verify_tests(
+    template_path: &str,
+    template_file: &str,
+    log_limb_size: u32,
+) -> String {
+    let mut env = Environment::new();
+
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
+    let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
+    let d2 = get_ed25519_d2();
+
+    let source = read_from_file(template_path, "bigint.wgsl");
+    env.add_template("bigint.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ff.wgsl");
+    env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_curve.wgsl");
+    env.add_template("ed25519_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_constants.wgsl");
+    env.add_template("ed25519_constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_utils.wgsl");
+    env.add_template("ed25519_utils.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_verify.wgsl");
+    env.add_template("ed25519_verify.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
