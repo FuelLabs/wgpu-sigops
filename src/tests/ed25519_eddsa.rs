@@ -3,6 +3,7 @@ use ark_ff::{PrimeField, BigInteger};
 use ark_ec::{CurveGroup, AffineRepr};
 use std::ops::Mul;
 use ark_ed25519::{EdwardsProjective as Projective, EdwardsAffine as Affine, Fr, Fq};
+use fuel_crypto::Message;
 use fuel_algos::coords;
 use fuel_algos::ed25519_eddsa::{
     decompress_to_ete,
@@ -43,6 +44,9 @@ pub async fn verify() {
         for _ in 0..20 {
             let mut message = [0u8; 100];
             rng.fill_bytes(&mut message);
+            let message = Message::new(&message);
+            let message = message.as_slice();
+
             let signing_key: SigningKey = SigningKey::generate(&mut rng);
             let verifying_key = signing_key.verifying_key();
             let signature: Signature = signing_key.sign(&message);
