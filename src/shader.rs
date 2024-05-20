@@ -562,3 +562,20 @@ pub fn render_ed25519_verify_tests(
     let template = env.get_template(template_file).unwrap();
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
 }
+
+pub fn render_sha512_96_tests(
+    template_path: &str,
+    template_file: &str,
+) -> String {
+    let mut env = Environment::new();
+
+    let source = read_from_file(template_path, "sha512.wgsl");
+    env.add_template("sha512.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+    let context = context!{};
+
+    let template = env.get_template(template_file).unwrap();
+    template.render(context).unwrap()
+}
