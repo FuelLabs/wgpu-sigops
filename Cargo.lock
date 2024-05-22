@@ -1232,7 +1232,7 @@ dependencies = [
 [[package]]
 name = "multiprecision"
 version = "0.1.0"
-source = "git+https://github.com/geometers/multiprecision.git#17bc7496dbe090d464df88bbcc8269ed60656944"
+source = "git+https://github.com/geometers/multiprecision.git#d4866bc47be11cf0ef988c69f369b6717d8a1678"
 dependencies = [
  "hex",
  "num 0.4.3",

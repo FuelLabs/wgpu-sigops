@@ -15,6 +15,8 @@ pub mod ed25519_curve;
 #[cfg(test)]
 pub mod ed25519_eddsa;
 #[cfg(test)]
+pub mod ed25519_reduce_fr;
+#[cfg(test)]
 pub mod sha512;
 #[cfg(test)]
 pub mod bytes_to_limbs;

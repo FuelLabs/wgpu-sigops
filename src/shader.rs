@@ -482,6 +482,72 @@ pub fn do_render_ed25519(
     template.render(context).unwrap()
 }
 
+pub fn render_ed25519_reduce_fr_tests(
+    template_path: &str,
+    template_file: &str,
+) -> String {
+    let mut env = Environment::new();
+
+    let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
+
+    let source = read_from_file(template_path, "ed25519_reduce_fr.wgsl");
+    env.add_template("ed25519_reduce_fr.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render_ed25519_reduce_fr_tests(&scalar_p, &template)
+}
+
+pub fn do_render_ed25519_reduce_fr_tests(
+    scalar_p: &BigUint,
+    template: &Template,
+) -> String {
+    let ed25519_fr_limbs = bigint::from_biguint_le(scalar_p, 32, 16);
+    let mut ed25519_fr_limbs_array = format!("var ed25519_fr_limbs = array<u32, 32>(").to_owned();
+    for i in 0..ed25519_fr_limbs.len() {
+        ed25519_fr_limbs_array.push_str(format!("{}u", ed25519_fr_limbs[i]).as_str());
+        if i < ed25519_fr_limbs.len() - 1 {
+            ed25519_fr_limbs_array.push_str(", ");
+        }
+    }
+    ed25519_fr_limbs_array.push_str(");");
+
+    let r = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffeb2106215d086329a7ed9ce5a30a2c131b39", 16).unwrap();
+    let r_bytes = multiprecision::utils::biguint_to_bytes_be(&r, 34);
+    let r_limbs = multiprecision::reduce::bytes_34_to_limbs_32(&r_bytes);
+
+    let mut r_limbs_array = format!("var r_limbs = array<u32, 32>(").to_owned();
+    for i in 0..r_limbs.len() {
+        r_limbs_array.push_str(format!("{}u", r_limbs[i]).as_str());
+        if i < r_limbs.len() - 1 {
+            r_limbs_array.push_str(", ");
+        }
+    }
+    r_limbs_array.push_str(");");
+
+    let scalar_p_bytes = multiprecision::utils::biguint_to_bytes_be(scalar_p, 34);
+    let scalar_p_limbs = multiprecision::reduce::bytes_34_to_limbs_32(&scalar_p_bytes);
+
+    let mut scalar_p_limbs_array = format!("var scalar_p_limbs = array<u32, 32>(").to_owned();
+    for i in 0..scalar_p_limbs.len() {
+        scalar_p_limbs_array.push_str(format!("{}u", scalar_p_limbs[i]).as_str());
+        if i < scalar_p_limbs.len() - 1 {
+            scalar_p_limbs_array.push_str(", ");
+        }
+    }
+    scalar_p_limbs_array.push_str(");");
+
+    let context = context! {
+        ed25519_fr_limbs_array => ed25519_fr_limbs_array,
+        scalar_p_limbs_array => scalar_p_limbs_array,
+        r_limbs_array => r_limbs_array,
+    };
+
+    template.render(context).unwrap()
+}
+
 pub fn render_ed25519_utils_tests(
     template_path: &str,
     template_file: &str,

@@ -35,6 +35,9 @@ use fuel_algos::ed25519_eddsa::{ark_ecverify, compute_hash};
 #[serial_test::serial]
 #[tokio::test]
 pub async fn verify() {
+
+    println!("{}", ark_ed25519::Fr::MODULUS);
+
     let p = crate::moduli::ed25519_fq_modulus_biguint();
 
     let mut rng = ChaCha8Rng::seed_from_u64(1);
