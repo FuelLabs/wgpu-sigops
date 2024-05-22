@@ -5,7 +5,7 @@
 {% include "constants.wgsl" %}
 {% include "ed25519_constants.wgsl" %}
 {% include "ed25519_utils.wgsl" %}
-{% include "ed25519_verify.wgsl" %}
+{% include "ed25519_eddsa.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> s: BigInt;
 @group(0) @binding(1) var<storage, read_write> k: BigInt;

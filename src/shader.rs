@@ -587,7 +587,7 @@ pub fn render_ed25519_utils_tests(
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
 }
 
-pub fn render_ed25519_verify_tests(
+pub fn render_ed25519_eddsa_tests(
     template_path: &str,
     template_file: &str,
     log_limb_size: u32,
@@ -619,8 +619,8 @@ pub fn render_ed25519_verify_tests(
     let source = read_from_file(template_path, "ed25519_utils.wgsl");
     env.add_template("ed25519_utils.wgsl", &source).unwrap();
 
-    let source = read_from_file(template_path, "ed25519_verify.wgsl");
-    env.add_template("ed25519_verify.wgsl", &source).unwrap();
+    let source = read_from_file(template_path, "ed25519_eddsa.wgsl");
+    env.add_template("ed25519_eddsa.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
