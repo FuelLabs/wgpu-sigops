@@ -1,3 +1,17 @@
+fn u32s_to_bytes_be(
+    input_u32s: ptr<function, array<u32, 16>>
+) -> array<u32, 32> {
+    var bytes_be: array<u32, 32>;
+    for (var i = 0u; i < 8u; i++) {
+        let r = (*input_u32s)[i];
+        for (var j = 0u; j < 4u; j ++) {
+            bytes_be[(i * 4 + j)] = (r >> (j * 8u)) & 255u;
+        }
+    }
+
+    return bytes_be;
+}
+
 fn bytes_be_to_limbs_le(
     bytes: ptr<function, array<u32, 32>>
 ) -> BigInt {

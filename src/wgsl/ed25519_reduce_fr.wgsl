@@ -105,11 +105,20 @@ fn ed25519_reduce_fr(
         rhs_limbs[i] = xr_shr_520_p_limbs[i];
     }
 
-    var t_limbs = sub(&x_limbs, &rhs_limbs);
+    var t_limbs: array<u32, 32> = sub(&x_limbs, &rhs_limbs);
 
     while (gte(&t_limbs, &scalar_p_limbs)) {
         t_limbs = sub(&t_limbs, &scalar_p_limbs);
     }
 
-    return t_limbs;
+    // t_limbs = [8.8, 8.8, 8.8...]
+    var t_bytes: array<u32, 32>;
+    for (var i = 0u; i < 16; i ++) {
+        var hi = t_limbs[i] >> 8u;
+        var lo = t_limbs[i] & 0xff;
+        t_bytes[i * 2    ] = lo;
+        t_bytes[i * 2 + 1] = hi;
+    }
+
+    return t_bytes;
 }

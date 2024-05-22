@@ -69,7 +69,7 @@ pub async fn do_ed25519_reduce_fr_test(
         &[result_buf],
     ).await;
 
-    let result = multiprecision::bigint::to_biguint_le(&results[0], 32, 16);
+    let result = multiprecision::bigint::to_biguint_le(&results[0], 32, 8);
 
     //println!("{}", hex::encode(&result.to_bytes_be()));
     assert_eq!(result, expected);

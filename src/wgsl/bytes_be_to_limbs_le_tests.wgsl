@@ -7,18 +7,12 @@
 @compute
 @workgroup_size(1)
 fn test_bytes_be_to_limbs_le(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    var input_u32s: array<u32, 8>;
-    for (var i = 0u; i < 8u; i ++) {
+    var input_u32s: array<u32, 16>;
+    for (var i = 0u; i < 16u; i ++) {
         input_u32s[i] = input[i];
     }
 
-    var bytes_be: array<u32, 32>;
-    for (var i = 0u; i < 8u; i++) {
-        let r = input_u32s[i];
-        for (var j = 0u; j < 4u; j ++) {
-            bytes_be[(i * 4 + j)] = (r >> (j * 8u)) & 255u;
-        }
-    }
+    var bytes_be = u32s_to_bytes_be(&input_u32s);
 
     var r: BigInt;
     r = bytes_be_to_limbs_le(&bytes_be);

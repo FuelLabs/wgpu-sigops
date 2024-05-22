@@ -12,6 +12,7 @@ fn ed25519_verify(
     var g = ETEPoint(g_xr, g_yr, g_tr, g_zr);
 
     var r = reconstruct_ete_from_y(ayr, x_sign, p);
+
     var is_valid_y_coord = r.is_valid_y_coord;
 
     if (!is_valid_y_coord) {

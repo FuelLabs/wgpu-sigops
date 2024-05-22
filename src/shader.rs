@@ -456,6 +456,8 @@ pub fn do_render_ed25519(
     let ed25519_generator_yr_bigint = gen_constant_bigint("ed25519_generator_yr", &ed25519_generator_yr, num_limbs, log_limb_size);
     let ed25519_generator_tr_bigint = gen_constant_bigint("ed25519_generator_tr", &ed25519_generator_tr, num_limbs, log_limb_size);
 
+    let (ed25519_fr_limbs_array, r_limbs_array, scalar_p_limbs_array) = gen_ed25519_reduce_fr_constants(scalar_p);
+
     let context = context! {
         num_limbs => num_limbs,
         log_limb_size => log_limb_size,
@@ -477,6 +479,9 @@ pub fn do_render_ed25519(
         ed25519_generator_xr_bigint => ed25519_generator_xr_bigint,
         ed25519_generator_yr_bigint => ed25519_generator_yr_bigint,
         ed25519_generator_tr_bigint => ed25519_generator_tr_bigint,
+        ed25519_fr_limbs_array => ed25519_fr_limbs_array,
+        scalar_p_limbs_array => scalar_p_limbs_array,
+        r_limbs_array => r_limbs_array,
     };
 
     template.render(context).unwrap()
@@ -500,10 +505,7 @@ pub fn render_ed25519_reduce_fr_tests(
     do_render_ed25519_reduce_fr_tests(&scalar_p, &template)
 }
 
-pub fn do_render_ed25519_reduce_fr_tests(
-    scalar_p: &BigUint,
-    template: &Template,
-) -> String {
+pub fn gen_ed25519_reduce_fr_constants(scalar_p: &BigUint) -> (String, String, String) {
     let ed25519_fr_limbs = bigint::from_biguint_le(scalar_p, 32, 16);
     let mut ed25519_fr_limbs_array = format!("var ed25519_fr_limbs = array<u32, 32>(").to_owned();
     for i in 0..ed25519_fr_limbs.len() {
@@ -538,6 +540,15 @@ pub fn do_render_ed25519_reduce_fr_tests(
         }
     }
     scalar_p_limbs_array.push_str(");");
+
+    (ed25519_fr_limbs_array, r_limbs_array, scalar_p_limbs_array)
+}
+
+pub fn do_render_ed25519_reduce_fr_tests(
+    scalar_p: &BigUint,
+    template: &Template,
+) -> String {
+    let (ed25519_fr_limbs_array, r_limbs_array, scalar_p_limbs_array) = gen_ed25519_reduce_fr_constants(scalar_p);
 
     let context = context! {
         ed25519_fr_limbs_array => ed25519_fr_limbs_array,
@@ -622,8 +633,17 @@ pub fn render_ed25519_eddsa_tests(
     let source = read_from_file(template_path, "ed25519_eddsa.wgsl");
     env.add_template("ed25519_eddsa.wgsl", &source).unwrap();
 
+    let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
+    env.add_template("bytes_be_to_limbs_le.wgsl", &source).unwrap();
+
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
+
+    let source = read_from_file(template_path, "sha512.wgsl");
+    env.add_template("sha512.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ed25519_reduce_fr.wgsl");
+    env.add_template("ed25519_reduce_fr.wgsl", &source).unwrap();
 
     let template = env.get_template(template_file).unwrap();
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)

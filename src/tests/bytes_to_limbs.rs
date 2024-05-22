@@ -25,22 +25,19 @@ pub async fn test_bytes_be_to_limbs_le_shader() {
     for log_limb_size in 11..16 {
         for _ in 0..10 {
             let val: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
-            let bytes = val.to_bytes_be();
 
-            do_test_bytes_be_to_limbs_le(&bytes, &p, log_limb_size).await;
+            do_test_bytes_be_to_limbs_le(&val, &p, log_limb_size).await;
         }
     }
 }
 
 pub async fn do_test_bytes_be_to_limbs_le(
-    bytes: &Vec<u8>,
+    val: &BigUint,
     p: &BigUint,
     log_limb_size: u32,
 ) {
     let num_limbs = calc_num_limbs(log_limb_size, 256);
-    let expected = BigUint::from_bytes_be(&bytes);
-
-    let _expected_limbs = bigint::from_biguint_le(&expected, num_limbs, log_limb_size);
+    let bytes = val.to_bytes_be();
 
     let (device, queue) = get_device_and_queue().await;
 
@@ -75,5 +72,5 @@ pub async fn do_test_bytes_be_to_limbs_le(
         log_limb_size,
     );
 
-    assert_eq!(result, expected);
+    assert_eq!(result, *val);
 }

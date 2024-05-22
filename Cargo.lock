@@ -720,6 +720,7 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "fuel-crypto",
+ "hex",
  "num 0.4.3",
  "num-bigint 0.4.5",
  "sha2",
