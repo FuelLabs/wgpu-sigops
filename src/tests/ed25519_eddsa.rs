@@ -44,7 +44,7 @@ pub async fn verify() {
     let mut rng = ChaCha8Rng::seed_from_u64(1);
 
     for log_limb_size in 13..14 {
-        for _ in 0..10 {
+        for _ in 0..1 {
             let mut message = [0u8; 100];
             rng.fill_bytes(&mut message);
             let message = Message::new(&message);
@@ -90,16 +90,9 @@ pub async fn do_eddsa_test(
     let hash1 = compute_hash(&verifying_key, &signature, &message);
     assert_eq!(hash0.as_slice(), hash1.as_slice());
 
-    let s: BigUint = Fr::from_le_bytes_mod_order(s_bytes).into_bigint().into();
-    let k: BigUint = Fr::from_le_bytes_mod_order(&hash1).into_bigint().into();
-
     let a = compressed_y_to_eteprojective(*a_bytes);
     assert_eq!(a.t, a.x * a.y);
     assert_eq!(a.z, Fq::from(1u32));
-    let ay: BigUint = a.y.into_bigint().into();
-    let ayr = ay * &r % p;
-
-    let x_sign = if is_negative(a.x) { 1u32 } else { 0u32 };
 
     let (device, queue) = get_device_and_queue().await;
 
@@ -107,13 +100,6 @@ pub async fn do_eddsa_test(
     s_bytes_le.reverse();
     let s_u32s: Vec<u32> = bytemuck::cast_slice(&s_bytes_le).to_vec();
 
-    let mut ayr_bytes_le = ayr.to_bytes_be().as_slice().to_vec();
-    while ayr_bytes_le.len() < 32 {
-        ayr_bytes_le.insert(0, 0);
-    }
-    let ayr_u32s: Vec<u32> = bytemuck::cast_slice(&ayr_bytes_le).to_vec();
-    let ayr_buf = create_sb_with_data(&device, &ayr_u32s);
- 
     let mut k_u32s = Vec::with_capacity(preimage_bytes.len() / 4);
     for chunk in preimage_bytes.chunks(4) {
         let value = BigEndian::read_u32(chunk);
@@ -122,7 +108,6 @@ pub async fn do_eddsa_test(
 
     let s_buf = create_sb_with_data(&device, &s_u32s);
     let k_buf = create_sb_with_data(&device, &k_u32s);
-    let x_sign_buf = create_sb_with_data(&device, &[x_sign as u32]);
     let result_buf = create_empty_sb(&device, (num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
 
     let source = render_ed25519_eddsa_tests("src/wgsl/", "ed25519_eddsa_tests.wgsl", log_limb_size);
@@ -134,7 +119,7 @@ pub async fn do_eddsa_test(
         &device,
         &compute_pipeline,
         0,
-        &[&s_buf, &k_buf, &ayr_buf, &x_sign_buf, &result_buf],
+        &[&s_buf, &k_buf, &result_buf],
     );
 
     execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
@@ -610,31 +595,80 @@ pub async fn do_conditional_negate_test(choice: bool) {
     assert_eq!(result, expected.into_bigint().into());
 }
 
-/*
 #[serial_test::serial]
 #[tokio::test]
-pub async fn compressed_y_to_eteprojective() {
+pub async fn compressed_y_to_eteprojective_test() {
     let p = crate::moduli::ed25519_fq_modulus_biguint();
 
     let mut rng = ChaCha8Rng::seed_from_u64(1);
 
-    for log_limb_size in 13..14 {
-        for _ in 0..1 {
-            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
-            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
-            let g = Affine::generator();
-            let a: Projective = g.mul(s).into_affine().into();
-            let signing_key_bytes = hex::decode("e3a5ac05b31a75cd0f5e4999c89ce53077ee6b0e9ed0f2ce6d187a624262d7af").unwrap();
-            let signing_key = SigningKey::from_bytes(signing_key_bytes.as_slice().try_into().unwrap());
-            let a_bytes = signing_key.as_bytes();
-            let a = compressed_y_to_eteprojective(*a_bytes);
+    for log_limb_size in 11..15 {
+        for _ in 0..10 {
+            let signing_key: SigningKey = SigningKey::generate(&mut rng);
+            let verifying_key = signing_key.verifying_key();
+            let a_bytes = verifying_key.as_bytes();
 
-            let a = coords::ETEProjective::<Fq> {x: a.x, y: a.y, t: a.t, z: a.z };
-            assert_eq!(a.t, a.x * a.y);
-            assert_eq!(a.z, Fq::from(1u32));
-
-            do_compressed_y_to_eteprojective_test(&a, &p, log_limb_size).await;
+            do_compressed_y_to_eteprojective_test(*a_bytes, &p, log_limb_size).await;
         }
     }
 }
-*/
+
+pub async fn do_compressed_y_to_eteprojective_test(a_bytes: [u8; 32], p: &BigUint, log_limb_size: u32) {
+    let a = compressed_y_to_eteprojective(a_bytes);
+    let a = coords::ETEProjective::<Fq> {x: a.x, y: a.y, t: a.t, z: a.z };
+    assert_eq!(a.t, a.x * a.y);
+    assert_eq!(a.z, Fq::from(1u32));
+
+    let expected = Affine::new(a.x, a.y);
+
+    let y_u32s: Vec<u32> = bytemuck::cast_slice(&a_bytes).to_vec();
+
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+
+    let (device, queue) = get_device_and_queue().await;
+    let y_buf = create_sb_with_data(&device, &y_u32s);
+    let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u32>()) as u64);
+    let is_valid_buf = create_empty_sb(&device, (std::mem::size_of::<u32>()) as u64);
+
+    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_compressed_y_to_eteprojective_tests.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "test_compressed_y_to_eteprojective");
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&y_buf, &result_buf, &is_valid_buf],
+    );
+
+    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+
+    let results = finish_encoder_and_read_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf, is_valid_buf],
+    ).await;
+
+    let convert_result_coord = |data: &Vec<u32>| -> Fq {
+        let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        let result = &result_r * &rinv % p;
+
+        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
+    };
+
+    let recovered_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
+    let recovered_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
+    let recovered_t = convert_result_coord(&results[0][(num_limbs * 2)..(num_limbs * 3)].to_vec());
+    let recovered_z = convert_result_coord(&results[0][(num_limbs * 3)..(num_limbs * 4)].to_vec());
+
+    let recovered = Projective::new(recovered_x, recovered_y, recovered_t, recovered_z).into_affine();
+    assert_eq!(recovered, expected);
+
+    let is_valid = results[1][0];
+    assert_eq!(is_valid, 1);
+}

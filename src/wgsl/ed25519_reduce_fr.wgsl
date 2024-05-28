@@ -79,8 +79,7 @@ fn ed25519_reduce_fr(
 ) -> array<u32, 32> {
     var result: array<u32, 32>;
 
-    {{ ed25519_fr_limbs_array }}
-    {{ r_limbs_array }}
+    {{ fr_reduce_r_limbs_array }}
     {{ scalar_p_limbs_array }}
 
     // Convert x (16 x u32 in big-endian) to 32 x u32s in little-endian
@@ -90,7 +89,7 @@ fn ed25519_reduce_fr(
         x_limbs[i * 2 + 0] = (*x)[15 - i] & 0xffff;
     }
 
-    var xr_limbs = mul(&x_limbs, &r_limbs);
+    var xr_limbs = mul(&x_limbs, &fr_reduce_r_limbs);
     var xr_shr_512_limbs = shr_512(&xr_limbs);
 
     var xr_shr_512_p_limbs = mul(&xr_shr_512_limbs, &scalar_p_limbs);

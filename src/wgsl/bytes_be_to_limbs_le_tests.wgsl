@@ -14,7 +14,5 @@ fn test_bytes_be_to_limbs_le(@builtin(global_invocation_id) global_id: vec3<u32>
 
     var bytes_be = u32s_to_bytes_be(&input_u32s);
 
-    var r: BigInt;
-    r = bytes_be_to_limbs_le(&bytes_be);
-    result = r;
+    result = bytes_be_to_limbs_le(&bytes_be);
 }
