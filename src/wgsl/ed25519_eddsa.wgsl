@@ -5,6 +5,7 @@ fn ed25519_verify(
     x_sign: bool,
     p: ptr<function, BigInt>,
 ) -> ETEPoint {
+    // Get the ed25519 curve generator
     var g_xr = get_ed25519_generator_xr();
     var g_yr = get_ed25519_generator_yr();
     var g_tr = get_ed25519_generator_tr();

@@ -68,6 +68,7 @@ pub async fn do_eddsa_test(
     p: &BigUint,
     log_limb_size: u32
 ) {
+    let s_bytes = signature.s_bytes();
     let r_bytes = signature.r_bytes();
     let a_bytes = verifying_key.as_bytes();
     let m_bytes = message;
@@ -84,10 +85,7 @@ pub async fn do_eddsa_test(
     let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
     let rinv = res.0;
 
-    let ark_recovered = ark_ecverify(&verifying_key, &signature, &message);
-
-    let s_bytes = signature.s_bytes();
-    let a_bytes = verifying_key.as_bytes();
+    let expected = ark_ecverify(&verifying_key, &signature, &message);
 
     let hash1 = compute_hash(&verifying_key, &signature, &message);
     assert_eq!(hash0.as_slice(), hash1.as_slice());
@@ -100,6 +98,7 @@ pub async fn do_eddsa_test(
     assert_eq!(a.z, Fq::from(1u32));
     let ay: BigUint = a.y.into_bigint().into();
     let ayr = ay * &r % p;
+
     let x_sign = if is_negative(a.x) { 1u32 } else { 0u32 };
 
     let (device, queue) = get_device_and_queue().await;
@@ -107,7 +106,6 @@ pub async fn do_eddsa_test(
     let mut s_bytes_le = s_bytes.as_slice().to_vec();
     s_bytes_le.reverse();
     let s_u32s: Vec<u32> = bytemuck::cast_slice(&s_bytes_le).to_vec();
-    let s_buf = create_sb_with_data(&device, &s_u32s);
 
     let mut ayr_bytes_le = ayr.to_bytes_be().as_slice().to_vec();
     while ayr_bytes_le.len() < 32 {
@@ -121,8 +119,9 @@ pub async fn do_eddsa_test(
         let value = BigEndian::read_u32(chunk);
         k_u32s.push(value);
     }
-    let k_buf = create_sb_with_data(&device, &k_u32s);
 
+    let s_buf = create_sb_with_data(&device, &s_u32s);
+    let k_buf = create_sb_with_data(&device, &k_u32s);
     let x_sign_buf = create_sb_with_data(&device, &[x_sign as u32]);
     let result_buf = create_empty_sb(&device, (num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
 
@@ -166,7 +165,7 @@ pub async fn do_eddsa_test(
     //println!("r.z: {}", hex::encode(&recovered_z.into_bigint().to_bytes_be()));
 
     let recovered = Projective::new(recovered_x, recovered_y, recovered_t, recovered_z).into_affine();
-    assert_eq!(recovered, ark_recovered);
+    assert_eq!(recovered, expected);
 }
 
 #[serial_test::serial]
@@ -271,13 +270,9 @@ pub async fn reconstruct_ete_point_from_y() {
 
     for log_limb_size in 11..15 {
         for _ in 0..30 {
-            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
-            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
-            let g = Affine::generator();
-            let a: Projective = g.mul(s).into_affine().into();
-            let signing_key_bytes = hex::decode("e3a5ac05b31a75cd0f5e4999c89ce53077ee6b0e9ed0f2ce6d187a624262d7af").unwrap();
-            let signing_key = SigningKey::from_bytes(signing_key_bytes.as_slice().try_into().unwrap());
-            let a_bytes = signing_key.as_bytes();
+            let signing_key: SigningKey = SigningKey::generate(&mut rng);
+            let verifying_key = signing_key.verifying_key();
+            let a_bytes = verifying_key.as_bytes();
             let a = compressed_y_to_eteprojective(*a_bytes);
 
             let a = coords::ETEProjective::<Fq> {x: a.x, y: a.y, t: a.t, z: a.z };
@@ -614,3 +609,32 @@ pub async fn do_conditional_negate_test(choice: bool) {
     let result = bigint::to_biguint_le(&results[0], num_limbs, log_limb_size);
     assert_eq!(result, expected.into_bigint().into());
 }
+
+/*
+#[serial_test::serial]
+#[tokio::test]
+pub async fn compressed_y_to_eteprojective() {
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
+
+    let mut rng = ChaCha8Rng::seed_from_u64(1);
+
+    for log_limb_size in 13..14 {
+        for _ in 0..1 {
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+            let g = Affine::generator();
+            let a: Projective = g.mul(s).into_affine().into();
+            let signing_key_bytes = hex::decode("e3a5ac05b31a75cd0f5e4999c89ce53077ee6b0e9ed0f2ce6d187a624262d7af").unwrap();
+            let signing_key = SigningKey::from_bytes(signing_key_bytes.as_slice().try_into().unwrap());
+            let a_bytes = signing_key.as_bytes();
+            let a = compressed_y_to_eteprojective(*a_bytes);
+
+            let a = coords::ETEProjective::<Fq> {x: a.x, y: a.y, t: a.t, z: a.z };
+            assert_eq!(a.t, a.x * a.y);
+            assert_eq!(a.z, Fq::from(1u32));
+
+            do_compressed_y_to_eteprojective_test(&a, &p, log_limb_size).await;
+        }
+    }
+}
+*/
