@@ -64,19 +64,14 @@ fn gte(
     return true;
 }
 
-fn shr_520(
+fn shr_512(
     a: ptr<function, array<u32, 64>>
 ) -> array<u32, 32> {
     var limbs: array<u32, 32>;
     for (var i = 32u; i < 64u; i ++) {
         limbs[i - 32u] = (*a)[i];
     }
-    var result: array<u32, 32>;
-    for (var i = 0u; i < 17u; i ++) {
-        result[i] = (limbs[i] >> 8u) + ((limbs[i + 1u] & 0xffu) << 8u);
-    }
-
-    return result;
+    return limbs;
 }
 
 fn ed25519_reduce_fr(
@@ -96,13 +91,13 @@ fn ed25519_reduce_fr(
     }
 
     var xr_limbs = mul(&x_limbs, &r_limbs);
-    var xr_shr_520_limbs = shr_520(&xr_limbs);
+    var xr_shr_512_limbs = shr_512(&xr_limbs);
 
-    var xr_shr_520_p_limbs = mul(&xr_shr_520_limbs, &scalar_p_limbs);
+    var xr_shr_512_p_limbs = mul(&xr_shr_512_limbs, &scalar_p_limbs);
 
     var rhs_limbs: array<u32, 32>;
     for (var i = 0u; i < 32u; i ++) {
-        rhs_limbs[i] = xr_shr_520_p_limbs[i];
+        rhs_limbs[i] = xr_shr_512_p_limbs[i];
     }
 
     var t_limbs: array<u32, 32> = sub(&x_limbs, &rhs_limbs);

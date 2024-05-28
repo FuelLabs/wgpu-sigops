@@ -516,7 +516,7 @@ pub fn gen_ed25519_reduce_fr_constants(scalar_p: &BigUint) -> (String, String, S
     }
     ed25519_fr_limbs_array.push_str(");");
 
-    let r = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffeb2106215d086329a7ed9ce5a30a2c131b39", 16).unwrap();
+    let r = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffeb2106215d086329a7ed9ce5a30a2c131b", 16).unwrap();
     let r_bytes = multiprecision::utils::biguint_to_bytes_be(&r, 34);
     let r_limbs = multiprecision::reduce::bytes_34_to_limbs_32(&r_bytes);
 
