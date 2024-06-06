@@ -2,21 +2,22 @@
 
 ## Getting started
 
-First, make sure to clone the `fuel_algos` repository:
+Clone this repository:
 
 ```bash
-git clone git@github.com:geometers/fuel-algos.git
+git clone git@github.com:geometers/wgpu_sig_ops.git
 ```
 
-Next, clone this repository and run its tests:
+Run the tests:
 
-```bash
-git clone git@github.com:geometers/wgpu_sig_ops.git &&
+```
 cd wgpu_sig_ops &&
 cargo test
 ```
 
 ## Montgomery multiplication benchmarks
+
+These benchmarks can help select the best choice of limb size for different platforms.
 
 ```bash
 cargo test mont_mul_benchmarks -- --nocapture

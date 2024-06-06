@@ -8,8 +8,8 @@ use ark_ed25519::{EdwardsAffine as Affine, EdwardsProjective as Projective, Fq, 
 use ark_ff::{BigInteger, PrimeField};
 use byteorder::{BigEndian, ByteOrder};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
-use fuel_algos::coords;
-use fuel_algos::ed25519_eddsa::{
+use crate::curve_algos::coords;
+use crate::curve_algos::ed25519_eddsa::{
     ark_ecverify, compressed_y_to_eteprojective, compute_hash, conditional_assign,
     conditional_negate, decompress_to_ete_unsafe, is_negative, sqrt_ratio_i,
 };

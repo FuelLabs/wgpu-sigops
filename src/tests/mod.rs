@@ -23,7 +23,7 @@ pub mod sha512;
 
 use ark_ff::fields::PrimeField;
 use ark_ff::BigInteger;
-use fuel_algos::coords;
+use crate::curve_algos::coords;
 use fuel_crypto::Signature;
 use multiprecision::bigint;
 use multiprecision::utils::calc_num_limbs;
