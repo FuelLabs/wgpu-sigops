@@ -1,4 +1,4 @@
-# `wgpu_secp256`
+# `wgpu_sig_ops`
 
 ## Getting started
 
@@ -11,8 +11,8 @@ git clone git@github.com:geometers/fuel-algos.git
 Next, clone this repository and run its tests:
 
 ```bash
-git clone git@github.com:geometers/wgpu_secp256.git &&
-cd wgpu_secp256 &&
+git clone git@github.com:geometers/wgpu_sig_ops.git &&
+cd wgpu_sig_ops &&
 cargo test
 ```
 

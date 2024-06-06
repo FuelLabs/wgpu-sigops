@@ -1,5 +1,5 @@
 [package]
-name = "wgpu_secp256"
+name = "wgpu_sig_ops"
 version = "0.1.0"
 edition = "2021"
 
@@ -29,6 +29,4 @@ tokio = { version = "1.37.0", features = ["full"] }
 rand_chacha = "0.3.1"
 rand = "0.8.5"
 stopwatch = "0.0.7"
-ark-ec = "0.4.0"
-bytemuck = "1.15.0"
 sha2 = { version = "0.10", default-features = false }
