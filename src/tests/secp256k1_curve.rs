@@ -1,27 +1,21 @@
-use ark_ff::{ PrimeField, BigInteger, One };
-use ark_secp256k1::{ Projective, Affine, Fr, Fq };
-use ark_ec::{ CurveGroup, AffineRepr };
-use std::ops::{ Mul };
-use rand::Rng;
-use rand_chacha::ChaCha8Rng;
-use rand_chacha::rand_core::SeedableRng;
-use num_bigint::{ BigUint, RandomBits };
-use multiprecision::utils::calc_num_limbs;
-use multiprecision::{ mont, bigint };
-use fuel_algos::secp256k1_curve as curve;
-use fuel_algos::coords;
-use crate::tests::{ fq_to_biguint, projectivexyz_to_mont_limbs };
-use crate::shader::render_secp256k1_curve_tests;
 use crate::gpu::{
-    create_empty_sb,
-    execute_pipeline,
-    create_bind_group,
-    create_sb_with_data,
-    get_device_and_queue,
-    create_command_encoder,
-    create_compute_pipeline,
-    finish_encoder_and_read_from_gpu,
+    create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
 };
+use crate::shader::render_secp256k1_curve_tests;
+use crate::tests::{fq_to_biguint, projectivexyz_to_mont_limbs};
+use ark_ec::{AffineRepr, CurveGroup};
+use ark_ff::{BigInteger, One, PrimeField};
+use ark_secp256k1::{Affine, Fq, Fr, Projective};
+use fuel_algos::coords;
+use fuel_algos::secp256k1_curve as curve;
+use multiprecision::utils::calc_num_limbs;
+use multiprecision::{bigint, mont};
+use num_bigint::{BigUint, RandomBits};
+use rand::Rng;
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+use std::ops::Mul;
 
 const NUM_RUNS_PER_TEST: usize = 4;
 
@@ -55,9 +49,25 @@ pub async fn projective_add_2007_bl_unsafe() {
             assert_eq!(a.z, Fq::one());
             assert_eq!(b.z, Fq::one());
 
-            let a = coords::ProjectiveXYZ::<Fq> { x: a.x, y: a.y, z: a.z };
-            let b = coords::ProjectiveXYZ::<Fq> {x: b.x, y: b.y, z: b.z };
-            do_add_test(&a, &b, log_limb_size, projective_to_affine_func, "secp256k1_curve_tests.wgsl", "test_projective_add_2007_bl_unsafe").await;
+            let a = coords::ProjectiveXYZ::<Fq> {
+                x: a.x,
+                y: a.y,
+                z: a.z,
+            };
+            let b = coords::ProjectiveXYZ::<Fq> {
+                x: b.x,
+                y: b.y,
+                z: b.z,
+            };
+            do_add_test(
+                &a,
+                &b,
+                log_limb_size,
+                projective_to_affine_func,
+                "secp256k1_curve_tests.wgsl",
+                "test_projective_add_2007_bl_unsafe",
+            )
+            .await;
         }
     }
 }
@@ -78,9 +88,20 @@ pub async fn projective_dbl_2007_bl_unsafe() {
 
             assert_eq!(a.z, Fq::one());
 
-            let a = coords::ProjectiveXYZ::<Fq> {x: a.x, y: a.y, z: a.z };
+            let a = coords::ProjectiveXYZ::<Fq> {
+                x: a.x,
+                y: a.y,
+                z: a.z,
+            };
 
-            do_dbl_test(&a, log_limb_size, projective_to_affine_func, "secp256k1_curve_tests.wgsl", "test_projective_dbl_2007_bl_unsafe").await;
+            do_dbl_test(
+                &a,
+                log_limb_size,
+                projective_to_affine_func,
+                "secp256k1_curve_tests.wgsl",
+                "test_projective_dbl_2007_bl_unsafe",
+            )
+            .await;
         }
     }
 }
@@ -100,9 +121,25 @@ pub async fn jacobian_add_2007_bl_unsafe() {
 
             let a: Projective = g.mul(s);
             let b: Projective = g.mul(r);
-            let a = coords::ProjectiveXYZ {x: a.x, y: a.y, z: a.z };
-            let b = coords::ProjectiveXYZ {x: b.x, y: b.y, z: b.z };
-            do_add_test(&a, &b, log_limb_size, jacobian_to_affine_func, "secp256k1_curve_tests.wgsl", "test_jacobian_add_2007_bl_unsafe").await;
+            let a = coords::ProjectiveXYZ {
+                x: a.x,
+                y: a.y,
+                z: a.z,
+            };
+            let b = coords::ProjectiveXYZ {
+                x: b.x,
+                y: b.y,
+                z: b.z,
+            };
+            do_add_test(
+                &a,
+                &b,
+                log_limb_size,
+                jacobian_to_affine_func,
+                "secp256k1_curve_tests.wgsl",
+                "test_jacobian_add_2007_bl_unsafe",
+            )
+            .await;
         }
     }
 }
@@ -118,9 +155,20 @@ pub async fn jacobian_dbl_2009_l() {
             let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
             let a: Projective = g.mul(s);
-            let a = coords::ProjectiveXYZ {x: a.x, y: a.y, z: a.z };
+            let a = coords::ProjectiveXYZ {
+                x: a.x,
+                y: a.y,
+                z: a.z,
+            };
 
-            do_dbl_test(&a, log_limb_size, jacobian_to_affine_func, "secp256k1_curve_tests.wgsl", "test_jacobian_dbl_2009_l").await;
+            do_dbl_test(
+                &a,
+                log_limb_size,
+                jacobian_to_affine_func,
+                "secp256k1_curve_tests.wgsl",
+                "test_jacobian_dbl_2009_l",
+            )
+            .await;
         }
     }
 }
@@ -165,14 +213,18 @@ pub async fn do_add_test(
         &[&pt_a_buf, &pt_b_buf, &result_buf],
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
 
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -226,14 +278,18 @@ pub async fn do_dbl_test(
         &[&pt_a_buf, &pt_b_buf, &result_buf],
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
 
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -260,7 +316,13 @@ pub async fn recover_affine_ys() {
     let a: Affine = Affine::generator().mul(s).into_affine();
 
     for log_limb_size in 13..16 {
-        do_recover_affine_ys_test(&a, log_limb_size, "secp256k1_curve_recover_affine_ys_tests.wgsl", "test_secp256k1_recover_affine_ys").await;
+        do_recover_affine_ys_test(
+            &a,
+            log_limb_size,
+            "secp256k1_curve_recover_affine_ys_tests.wgsl",
+            "test_secp256k1_recover_affine_ys",
+        )
+        .await;
     }
 }
 
@@ -269,7 +331,7 @@ pub async fn do_recover_affine_ys_test(
     log_limb_size: u32,
     filename: &str,
     entrypoint: &str,
-    ) {
+) {
     let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let r = mont::calc_mont_radix(num_limbs, log_limb_size);
@@ -298,14 +360,22 @@ pub async fn do_recover_affine_ys_test(
         &[&xr_buf, &result_0_buf, &result_1_buf],
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
 
     let results = finish_encoder_and_read_from_gpu(
         &device,
         &queue,
         Box::new(command_encoder),
         &[result_0_buf, result_1_buf],
-    ).await;
+    )
+    .await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -338,11 +408,31 @@ pub async fn scalar_mul() {
 
             // a is in Jacobian
             let a: Projective = g.mul(s).into_affine().into();
-            let a = coords::ProjectiveXYZ {x: a.x, y: a.y, z: a.z };
-            do_scalar_mul_test(&a, &x, jacobian_to_affine_func, log_limb_size, "secp256k1_curve_scalar_mul_tests.wgsl", "test_scalar_mul").await;
+            let a = coords::ProjectiveXYZ {
+                x: a.x,
+                y: a.y,
+                z: a.z,
+            };
+            do_scalar_mul_test(
+                &a,
+                &x,
+                jacobian_to_affine_func,
+                log_limb_size,
+                "secp256k1_curve_scalar_mul_tests.wgsl",
+                "test_scalar_mul",
+            )
+            .await;
 
             let x = BigUint::from(0u32);
-            do_scalar_mul_test(&a, &x, jacobian_to_affine_func, log_limb_size, "secp256k1_curve_scalar_mul_tests.wgsl", "test_scalar_mul").await;
+            do_scalar_mul_test(
+                &a,
+                &x,
+                jacobian_to_affine_func,
+                log_limb_size,
+                "secp256k1_curve_scalar_mul_tests.wgsl",
+                "test_scalar_mul",
+            )
+            .await;
         }
     }
 }
@@ -387,14 +477,18 @@ pub async fn do_scalar_mul_test(
         &[&pt_a_buf, &xr_buf, &result_buf],
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
 
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_x_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -437,10 +531,28 @@ pub async fn strauss_shamir_mul() {
             let x: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let y: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
 
-            let a = coords::ProjectiveXYZ::<Fq> { x: a.x, y: a.y, z: a.z };
-            let b = coords::ProjectiveXYZ::<Fq> { x: b.x, y: b.y, z: b.z };
+            let a = coords::ProjectiveXYZ::<Fq> {
+                x: a.x,
+                y: a.y,
+                z: a.z,
+            };
+            let b = coords::ProjectiveXYZ::<Fq> {
+                x: b.x,
+                y: b.y,
+                z: b.z,
+            };
 
-            do_strauss_shamir_mul_test(&a, &b, &x, &y, projective_to_affine_func, log_limb_size, "secp256k1_curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
+            do_strauss_shamir_mul_test(
+                &a,
+                &b,
+                &x,
+                &y,
+                projective_to_affine_func,
+                log_limb_size,
+                "secp256k1_curve_strauss_shamir_mul_tests.wgsl",
+                "test_strauss_shamir_mul",
+            )
+            .await;
         }
     }
 }
@@ -453,20 +565,54 @@ pub async fn strauss_shamir_mul_2() {
     // This is an interesting case if the addition formula does not account for the point at
     // infinity. It fails at the 254th bit where P + Q = inf; where P and Q
     // sit on the opposite sides of the Y-axis. Not sure why we end up with these two points.
-    let x = BigUint::parse_bytes(b"8ce48a1b5f7942ed63c3f5380d98bd57f702aa6ded0e8022b4890762aca5fa5d", 16).unwrap();
-    let y = BigUint::parse_bytes(b"84023f2e9587339fe4076de927d8f1cbff4279a6982e1b0599221e20153f147a", 16).unwrap();
+    let x = BigUint::parse_bytes(
+        b"8ce48a1b5f7942ed63c3f5380d98bd57f702aa6ded0e8022b4890762aca5fa5d",
+        16,
+    )
+    .unwrap();
+    let y = BigUint::parse_bytes(
+        b"84023f2e9587339fe4076de927d8f1cbff4279a6982e1b0599221e20153f147a",
+        16,
+    )
+    .unwrap();
 
     let g = Affine::generator();
-    let g = coords::ProjectiveXYZ {x: g.x, y: g.y, z: Fq::one() };
-    
-    let bx = BigUint::parse_bytes(b"57955212013049338432744149260690748736552621582696778344469660993364486735760", 10).unwrap();
-    let by = BigUint::parse_bytes(b"18014696949887157897072847726343716132385694929890630512424732633979399864330", 10).unwrap();
+    let g = coords::ProjectiveXYZ {
+        x: g.x,
+        y: g.y,
+        z: Fq::one(),
+    };
+
+    let bx = BigUint::parse_bytes(
+        b"57955212013049338432744149260690748736552621582696778344469660993364486735760",
+        10,
+    )
+    .unwrap();
+    let by = BigUint::parse_bytes(
+        b"18014696949887157897072847726343716132385694929890630512424732633979399864330",
+        10,
+    )
+    .unwrap();
     let bx = Fq::from_be_bytes_mod_order(&bx.to_bytes_be());
     let by = Fq::from_be_bytes_mod_order(&by.to_bytes_be());
     let b = Affine::new(bx, by);
-    let b = coords::ProjectiveXYZ {x: b.x, y: b.y, z: Fq::one() };
+    let b = coords::ProjectiveXYZ {
+        x: b.x,
+        y: b.y,
+        z: Fq::one(),
+    };
 
-    do_strauss_shamir_mul_test(&g, &b, &x, &y, projective_to_affine_func, log_limb_size, "secp256k1_curve_strauss_shamir_mul_tests.wgsl", "test_strauss_shamir_mul").await;
+    do_strauss_shamir_mul_test(
+        &g,
+        &b,
+        &x,
+        &y,
+        projective_to_affine_func,
+        log_limb_size,
+        "secp256k1_curve_strauss_shamir_mul_tests.wgsl",
+        "test_strauss_shamir_mul",
+    )
+    .await;
 }
 
 pub async fn do_strauss_shamir_mul_test(
@@ -497,8 +643,8 @@ pub async fn do_strauss_shamir_mul_test(
     assert_eq!(a.z, Fq::one());
     assert_eq!(b.z, Fq::one());
 
-    let expected = a.mul(Fr::from_be_bytes_mod_order(&x.to_bytes_be())) + 
-        b.mul(Fr::from_be_bytes_mod_order(&y.to_bytes_be()));
+    let expected = a.mul(Fr::from_be_bytes_mod_order(&x.to_bytes_be()))
+        + b.mul(Fr::from_be_bytes_mod_order(&y.to_bytes_be()));
 
     let (device, queue) = get_device_and_queue().await;
 
@@ -520,14 +666,18 @@ pub async fn do_strauss_shamir_mul_test(
         &[&pt_a_buf, &pt_b_buf, &x_buf, &y_buf, &result_buf],
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
 
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let d = bigint::to_biguint_le(&data, num_limbs, log_limb_size);

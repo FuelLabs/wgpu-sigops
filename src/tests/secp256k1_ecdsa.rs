@@ -1,25 +1,19 @@
-use ark_ff::{ PrimeField, BigInteger };
-use ark_secp256k1::{ Affine, Fq };
-use ark_ec::AffineRepr;
-use num_bigint::{ BigUint, RandomBits };
-use multiprecision::utils::calc_num_limbs;
-use multiprecision::{ mont, bigint };
-use fuel_crypto::{ Message, Signature, SecretKey };
-use rand::Rng;
-use rand_chacha::ChaCha8Rng;
-use rand_chacha::rand_core::SeedableRng;
-use crate::shader::render_secp256k1_ecdsa_tests;
 use crate::gpu::{
-    create_empty_sb,
-    execute_pipeline,
-    create_bind_group,
-    create_sb_with_data,
-    get_device_and_queue,
-    create_command_encoder,
-    create_compute_pipeline,
-    finish_encoder_and_read_from_gpu,
+    create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
 };
+use crate::shader::render_secp256k1_ecdsa_tests;
 use crate::tests::secp256k1_curve::projective_to_affine_func;
+use ark_ec::AffineRepr;
+use ark_ff::{BigInteger, PrimeField};
+use ark_secp256k1::{Affine, Fq};
+use fuel_crypto::{Message, SecretKey, Signature};
+use multiprecision::utils::calc_num_limbs;
+use multiprecision::{bigint, mont};
+use num_bigint::{BigUint, RandomBits};
+use rand::Rng;
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 
 #[serial_test::serial]
 #[tokio::test]
@@ -36,8 +30,11 @@ pub async fn test_secp256k1_ecrecover() {
             let pk = secret.public_key();
 
             let fuel_signature = Signature::sign(&secret, &message);
-            let recovered = fuel_signature.recover(&message).expect("Failed to recover PK");
-            let (_decoded_sig, _is_y_odd) = crate::tests::fuel_decode_signature(&fuel_signature.clone());
+            let recovered = fuel_signature
+                .recover(&message)
+                .expect("Failed to recover PK");
+            let (_decoded_sig, _is_y_odd) =
+                crate::tests::fuel_decode_signature(&fuel_signature.clone());
             assert_eq!(recovered, pk);
 
             let msg_bytes = message.as_slice();
@@ -51,10 +48,20 @@ pub async fn test_secp256k1_ecrecover() {
             let pk_x = Fq::from_be_bytes_mod_order(&pk_x.to_bytes_be());
             let pk_y = Fq::from_be_bytes_mod_order(&pk_y.to_bytes_be());
             let pk = Affine::new(pk_x, pk_y);
-            
+
             let msg = BigUint::from_bytes_be(&msg_bytes);
 
-            do_secp256k1_test(i, &sig_bytes, &msg, &pk, log_limb_size, projective_to_affine_func, "secp256k1_ecdsa_tests.wgsl", "test_secp256k1_recover").await;
+            do_secp256k1_test(
+                i,
+                &sig_bytes,
+                &msg,
+                &pk,
+                log_limb_size,
+                projective_to_affine_func,
+                "secp256k1_ecdsa_tests.wgsl",
+                "test_secp256k1_recover",
+            )
+            .await;
         }
     }
 }
@@ -97,14 +104,18 @@ pub async fn do_secp256k1_test(
         &[&sig_buf, &msg_buf, &result_buf],
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
 
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result = bigint::to_biguint_le(&data, num_limbs, log_limb_size);

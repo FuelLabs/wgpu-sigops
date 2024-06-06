@@ -1,9 +1,8 @@
-use std::boxed::Box;
 use std::borrow::Cow;
+use std::boxed::Box;
 use wgpu::util::DeviceExt;
 
-pub async fn get_device_and_queue(
-) -> (wgpu::Device, wgpu::Queue) {
+pub async fn get_device_and_queue() -> (wgpu::Device, wgpu::Queue) {
     let instance = wgpu::Instance::default();
     let adapter = instance
         .request_adapter(&wgpu::RequestAdapterOptions {
@@ -11,7 +10,8 @@ pub async fn get_device_and_queue(
             force_fallback_adapter: false,
             compatible_surface: None,
         })
-        .await.unwrap();
+        .await
+        .unwrap();
 
     let (device, queue) = adapter
         .request_device(
@@ -30,18 +30,11 @@ pub async fn get_device_and_queue(
     (device, queue)
 }
 
-pub fn create_command_encoder(
-    device: &wgpu::Device,
-) -> wgpu::CommandEncoder {
-    device.create_command_encoder(
-        &wgpu::CommandEncoderDescriptor { label: None }
-    )
+pub fn create_command_encoder(device: &wgpu::Device) -> wgpu::CommandEncoder {
+    device.create_command_encoder(&wgpu::CommandEncoderDescriptor { label: None })
 }
 
-pub fn create_sb_with_data(
-    device: &wgpu::Device,
-    data: &[u32],
-) -> wgpu::Buffer {
+pub fn create_sb_with_data(device: &wgpu::Device, data: &[u32]) -> wgpu::Buffer {
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: None,
         contents: bytemuck::cast_slice(data),
@@ -51,10 +44,7 @@ pub fn create_sb_with_data(
     })
 }
 
-pub fn create_empty_sb(
-    device: &wgpu::Device,
-    size: u64,
-) -> wgpu::Buffer {
+pub fn create_empty_sb(device: &wgpu::Device, size: u64) -> wgpu::Buffer {
     device.create_buffer(&wgpu::BufferDescriptor {
         label: None,
         size,
@@ -91,7 +81,10 @@ pub fn execute_pipeline(
     num_y_workgroups: u32,
     num_z_workgroups: u32,
 ) {
-    let mut cpass = command_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor { label: None, timestamp_writes: None });
+    let mut cpass = command_encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+        label: None,
+        timestamp_writes: None,
+    });
     cpass.set_pipeline(compute_pipeline);
     cpass.set_bind_group(0, &bind_group, &[]);
     cpass.insert_debug_marker("debug marker");
@@ -104,14 +97,13 @@ pub fn create_bind_group(
     binding_idx: u32,
     buffers: &[&wgpu::Buffer],
 ) -> wgpu::BindGroup {
-    let entries: Vec::<wgpu::BindGroupEntry> = 
-        buffers
+    let entries: Vec<wgpu::BindGroupEntry> = buffers
         .iter()
         .enumerate()
-        .map(
-            |(i, buf)| 
-            wgpu::BindGroupEntry{ binding: i as u32, resource: buf.as_entire_binding() }
-        )
+        .map(|(i, buf)| wgpu::BindGroupEntry {
+            binding: i as u32,
+            resource: buf.as_entire_binding(),
+        })
         .collect();
 
     let bind_group_layout = compute_pipeline.get_bind_group_layout(binding_idx);
@@ -129,7 +121,7 @@ pub async fn finish_encoder_and_read_from_gpu(
     buffers: &[wgpu::Buffer],
 ) -> Vec<Vec<u32>> {
     let mut results = Vec::<Vec<u32>>::with_capacity(buffers.len());
-    let mut staging_buffers  = Vec::<wgpu::Buffer>::with_capacity(buffers.len());
+    let mut staging_buffers = Vec::<wgpu::Buffer>::with_capacity(buffers.len());
 
     for buffer in buffers {
         let size = buffer.size();

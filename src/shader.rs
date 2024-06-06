@@ -1,19 +1,18 @@
-use minijinja::{Environment, Template, context};
-use std::path::PathBuf;
-use ark_ff::{Field, PrimeField, BigInteger};
+use crate::tests::{get_ed25519_d2, get_secp256k1_b, get_secp256r1_b};
 use ark_ec::twisted_edwards::TECurveConfig;
 use ark_ec::AffineRepr;
-use num_bigint::BigUint;
-use multiprecision::utils::calc_num_limbs;
-use multiprecision::{ bigint, mont, ff, utils::calc_bitwidth };
-use crate::tests::{get_secp256k1_b, get_secp256r1_b, get_ed25519_d2 };
 use ark_ed25519::EdwardsAffine;
+use ark_ff::{BigInteger, Field, PrimeField};
+use minijinja::{context, Environment, Template};
+use multiprecision::utils::calc_num_limbs;
+use multiprecision::{bigint, ff, mont, utils::calc_bitwidth};
+use num_bigint::BigUint;
+use std::path::PathBuf;
 
-fn read_from_file(
-    path: &str,
-    file: &str,
-) -> String {
-    let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(path).join(file);
+fn read_from_file(path: &str, file: &str) -> String {
+    let input_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join(path)
+        .join(file);
     std::fs::read_to_string(&input_path).unwrap()
 }
 
@@ -21,10 +20,14 @@ pub fn gen_constant_bigint(
     var_name: &str,
     val: &BigUint,
     num_limbs: usize,
-    log_limb_size: u32
+    log_limb_size: u32,
 ) -> String {
     let r_limbs = bigint::from_biguint_le(val, num_limbs, log_limb_size);
-    let mut result = format!("var {}: BigInt = BigInt(array<u32, {}>(", var_name, num_limbs).to_owned();
+    let mut result = format!(
+        "var {}: BigInt = BigInt(array<u32, {}>(",
+        var_name, num_limbs
+    )
+    .to_owned();
 
     for i in 0..num_limbs {
         result.push_str(format!("{}u", r_limbs[i]).as_str());
@@ -68,24 +71,54 @@ pub fn do_render(
     let br3_bigint = gen_constant_bigint("br3", &br3, num_limbs, log_limb_size);
 
     let mu_fp_bigint = gen_constant_bigint("mu_fp", &ff::gen_mu(&p), num_limbs, log_limb_size);
-    let mu_fr_bigint = gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
+    let mu_fr_bigint =
+        gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
 
-    let secp256k1_generator_x = BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_X.into_bigint().to_bytes_be());
-    let secp256k1_generator_y = BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_Y.into_bigint().to_bytes_be());
+    let secp256k1_generator_x =
+        BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_X.into_bigint().to_bytes_be());
+    let secp256k1_generator_y =
+        BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_Y.into_bigint().to_bytes_be());
     let secp256k1_generator_xr = secp256k1_generator_x * &r % p;
     let secp256k1_generator_yr = secp256k1_generator_y * &r % p;
-    let secp256k1_generator_xr_bigint = gen_constant_bigint("secp256k1_generator_xr", &secp256k1_generator_xr, num_limbs, log_limb_size);
-    let secp256k1_generator_yr_bigint = gen_constant_bigint("secp256k1_generator_yr", &secp256k1_generator_yr, num_limbs, log_limb_size);
+    let secp256k1_generator_xr_bigint = gen_constant_bigint(
+        "secp256k1_generator_xr",
+        &secp256k1_generator_xr,
+        num_limbs,
+        log_limb_size,
+    );
+    let secp256k1_generator_yr_bigint = gen_constant_bigint(
+        "secp256k1_generator_yr",
+        &secp256k1_generator_yr,
+        num_limbs,
+        log_limb_size,
+    );
 
-    let secp256r1_generator_x = BigUint::from_bytes_be(&ark_secp256r1::G_GENERATOR_X.into_bigint().to_bytes_be());
-    let secp256r1_generator_y = BigUint::from_bytes_be(&ark_secp256r1::G_GENERATOR_Y.into_bigint().to_bytes_be());
+    let secp256r1_generator_x =
+        BigUint::from_bytes_be(&ark_secp256r1::G_GENERATOR_X.into_bigint().to_bytes_be());
+    let secp256r1_generator_y =
+        BigUint::from_bytes_be(&ark_secp256r1::G_GENERATOR_Y.into_bigint().to_bytes_be());
     let secp256r1_generator_xr = secp256r1_generator_x * &r % p;
     let secp256r1_generator_yr = secp256r1_generator_y * &r % p;
-    let secp256r1_generator_xr_bigint = gen_constant_bigint("secp256r1_generator_xr", &secp256r1_generator_xr, num_limbs, log_limb_size);
-    let secp256r1_generator_yr_bigint = gen_constant_bigint("secp256r1_generator_yr", &secp256r1_generator_yr, num_limbs, log_limb_size);
+    let secp256r1_generator_xr_bigint = gen_constant_bigint(
+        "secp256r1_generator_xr",
+        &secp256r1_generator_xr,
+        num_limbs,
+        log_limb_size,
+    );
+    let secp256r1_generator_yr_bigint = gen_constant_bigint(
+        "secp256r1_generator_yr",
+        &secp256r1_generator_yr,
+        num_limbs,
+        log_limb_size,
+    );
 
     let sqrt_case3mod4_exponent = (p + BigUint::from(1u32)) / BigUint::from(4u32);
-    let sqrt_case3mod4_exponent_bigint = gen_constant_bigint("sqrt_case3mod4_exponent", &sqrt_case3mod4_exponent, num_limbs, log_limb_size);
+    let sqrt_case3mod4_exponent_bigint = gen_constant_bigint(
+        "sqrt_case3mod4_exponent",
+        &sqrt_case3mod4_exponent,
+        num_limbs,
+        log_limb_size,
+    );
 
     let context = context! {
         num_limbs => num_limbs,
@@ -125,7 +158,8 @@ pub fn render_bytes_to_limbs_test(
     env.add_template("bigint.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source).unwrap();
+    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
+        .unwrap();
 
     let source = read_from_file(template_path, "constants.wgsl");
     env.add_template("constants.wgsl", &source).unwrap();
@@ -273,10 +307,12 @@ pub fn render_secp256k1_ecdsa_tests(
     env.add_template("constants.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "secp256k1_curve_generators.wgsl");
-    env.add_template("secp256k1_curve_generators.wgsl", &source).unwrap();
+    env.add_template("secp256k1_curve_generators.wgsl", &source)
+        .unwrap();
 
     let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source).unwrap();
+    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
+        .unwrap();
 
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
@@ -357,10 +393,12 @@ pub fn render_secp256r1_ecdsa_tests(
     env.add_template("constants.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "secp256r1_curve_generators.wgsl");
-    env.add_template("secp256r1_curve_generators.wgsl", &source).unwrap();
+    env.add_template("secp256r1_curve_generators.wgsl", &source)
+        .unwrap();
 
     let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source).unwrap();
+    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
+        .unwrap();
 
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
@@ -433,18 +471,37 @@ pub fn do_render_ed25519(
     let d2r_bigint = gen_constant_bigint("d2r", &d2r, num_limbs, log_limb_size);
 
     let mu_fp_bigint = gen_constant_bigint("mu_fp", &ff::gen_mu(&p), num_limbs, log_limb_size);
-    let mu_fr_bigint = gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
+    let mu_fr_bigint =
+        gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
 
-    let p58_exponent = BigUint::parse_bytes(b"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd", 16).unwrap();
-    assert_eq!(p58_exponent, (p - BigUint::from(5u32)) / BigUint::from(8u32));
-    let p58_exponent_bigint = gen_constant_bigint("p58_exponent", &p58_exponent, num_limbs, log_limb_size);
+    let p58_exponent = BigUint::parse_bytes(
+        b"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd",
+        16,
+    )
+    .unwrap();
+    assert_eq!(
+        p58_exponent,
+        (p - BigUint::from(5u32)) / BigUint::from(8u32)
+    );
+    let p58_exponent_bigint =
+        gen_constant_bigint("p58_exponent", &p58_exponent, num_limbs, log_limb_size);
 
     let sqrt_m1 = ark_ed25519::Fq::from(-1i32).sqrt().unwrap();
     let sqrt_m1_bigint: BigUint = sqrt_m1.into_bigint().into();
-    let sqrt_m1r_bigint = gen_constant_bigint("sqrt_m1r", &(sqrt_m1_bigint * &r % p), num_limbs, log_limb_size);
+    let sqrt_m1r_bigint = gen_constant_bigint(
+        "sqrt_m1r",
+        &(sqrt_m1_bigint * &r % p),
+        num_limbs,
+        log_limb_size,
+    );
 
     let edwards_dr: BigUint = ark_ed25519::EdwardsConfig::COEFF_D.into_bigint().into();
-    let edwards_dr_bigint = gen_constant_bigint("edwards_dr", &(edwards_dr * &r % p), num_limbs, log_limb_size);
+    let edwards_dr_bigint = gen_constant_bigint(
+        "edwards_dr",
+        &(edwards_dr * &r % p),
+        num_limbs,
+        log_limb_size,
+    );
 
     let generator = EdwardsAffine::generator();
     let ed25519_generator_x = BigUint::from_bytes_be(&generator.x.into_bigint().to_bytes_be());
@@ -452,9 +509,24 @@ pub fn do_render_ed25519(
     let ed25519_generator_xr = &ed25519_generator_x * &r % p;
     let ed25519_generator_yr = &ed25519_generator_y * &r % p;
     let ed25519_generator_tr = (&ed25519_generator_x * &ed25519_generator_y) * &r % p;
-    let ed25519_generator_xr_bigint = gen_constant_bigint("ed25519_generator_xr", &ed25519_generator_xr, num_limbs, log_limb_size);
-    let ed25519_generator_yr_bigint = gen_constant_bigint("ed25519_generator_yr", &ed25519_generator_yr, num_limbs, log_limb_size);
-    let ed25519_generator_tr_bigint = gen_constant_bigint("ed25519_generator_tr", &ed25519_generator_tr, num_limbs, log_limb_size);
+    let ed25519_generator_xr_bigint = gen_constant_bigint(
+        "ed25519_generator_xr",
+        &ed25519_generator_xr,
+        num_limbs,
+        log_limb_size,
+    );
+    let ed25519_generator_yr_bigint = gen_constant_bigint(
+        "ed25519_generator_yr",
+        &ed25519_generator_yr,
+        num_limbs,
+        log_limb_size,
+    );
+    let ed25519_generator_tr_bigint = gen_constant_bigint(
+        "ed25519_generator_tr",
+        &ed25519_generator_tr,
+        num_limbs,
+        log_limb_size,
+    );
 
     let (fr_reduce_r_limbs_array, scalar_p_limbs_array) = gen_ed25519_reduce_fr_constants(scalar_p);
 
@@ -486,10 +558,7 @@ pub fn do_render_ed25519(
     template.render(context).unwrap()
 }
 
-pub fn render_ed25519_reduce_fr_tests(
-    template_path: &str,
-    template_file: &str,
-) -> String {
+pub fn render_ed25519_reduce_fr_tests(template_path: &str, template_file: &str) -> String {
     let mut env = Environment::new();
 
     let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
@@ -508,7 +577,11 @@ pub fn render_ed25519_reduce_fr_tests(
 //}
 
 pub fn gen_ed25519_reduce_fr_constants(scalar_p: &BigUint) -> (String, String) {
-    let r = BigUint::parse_bytes(b"fffffffffffffffffffffffffffffffeb2106215d086329a7ed9ce5a30a2c131b", 16).unwrap();
+    let r = BigUint::parse_bytes(
+        b"fffffffffffffffffffffffffffffffeb2106215d086329a7ed9ce5a30a2c131b",
+        16,
+    )
+    .unwrap();
     let r_bytes = multiprecision::utils::biguint_to_bytes_be(&r, 34);
     let r_limbs = multiprecision::reduce::bytes_34_to_limbs_32(&r_bytes);
 
@@ -536,10 +609,7 @@ pub fn gen_ed25519_reduce_fr_constants(scalar_p: &BigUint) -> (String, String) {
     (fr_reduce_r_limbs_array, scalar_p_limbs_array)
 }
 
-pub fn do_render_ed25519_reduce_fr_tests(
-    scalar_p: &BigUint,
-    template: &Template,
-) -> String {
+pub fn do_render_ed25519_reduce_fr_tests(scalar_p: &BigUint, template: &Template) -> String {
     let (fr_reduce_r_limbs_array, scalar_p_limbs_array) = gen_ed25519_reduce_fr_constants(scalar_p);
 
     let context = context! {
@@ -583,7 +653,8 @@ pub fn render_ed25519_utils_tests(
     env.add_template("ed25519_utils.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source).unwrap();
+    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
+        .unwrap();
 
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
@@ -628,7 +699,8 @@ pub fn render_ed25519_eddsa_tests(
     env.add_template("ed25519_eddsa.wgsl", &source).unwrap();
 
     let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source).unwrap();
+    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
+        .unwrap();
 
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
@@ -643,10 +715,7 @@ pub fn render_ed25519_eddsa_tests(
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
 }
 
-pub fn render_sha512_96_tests(
-    template_path: &str,
-    template_file: &str,
-) -> String {
+pub fn render_sha512_96_tests(template_path: &str, template_file: &str) -> String {
     let mut env = Environment::new();
 
     let source = read_from_file(template_path, "sha512.wgsl");
@@ -654,7 +723,7 @@ pub fn render_sha512_96_tests(
 
     let source = read_from_file(template_path, template_file);
     env.add_template(template_file, &source).unwrap();
-    let context = context!{};
+    let context = context! {};
 
     let template = env.get_template(template_file).unwrap();
     template.render(context).unwrap()

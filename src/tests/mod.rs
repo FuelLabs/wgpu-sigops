@@ -1,6 +1,14 @@
 #[cfg(test)]
 pub mod bigint_and_ff;
 #[cfg(test)]
+pub mod bytes_to_limbs;
+#[cfg(test)]
+pub mod ed25519_curve;
+#[cfg(test)]
+pub mod ed25519_eddsa;
+#[cfg(test)]
+pub mod ed25519_reduce_fr;
+#[cfg(test)]
 pub mod mont;
 #[cfg(test)]
 pub mod secp256k1_curve;
@@ -11,38 +19,42 @@ pub mod secp256r1_curve;
 #[cfg(test)]
 pub mod secp256r1_ecdsa;
 #[cfg(test)]
-pub mod ed25519_curve;
-#[cfg(test)]
-pub mod ed25519_eddsa;
-#[cfg(test)]
-pub mod ed25519_reduce_fr;
-#[cfg(test)]
 pub mod sha512;
-#[cfg(test)]
-pub mod bytes_to_limbs;
 
-use ark_ff::BigInteger;
 use ark_ff::fields::PrimeField;
-use num_bigint::BigUint;
+use ark_ff::BigInteger;
 use fuel_algos::coords;
 use fuel_crypto::Signature;
-use multiprecision::utils::calc_num_limbs;
 use multiprecision::bigint;
+use multiprecision::utils::calc_num_limbs;
+use num_bigint::BigUint;
 
 pub fn get_secp256k1_b() -> BigUint {
     BigUint::from(7u32)
 }
 
 pub fn get_secp256r1_a() -> BigUint {
-    BigUint::parse_bytes(b"ffffffff00000001000000000000000000000000fffffffffffffffffffffffc", 16).unwrap()
+    BigUint::parse_bytes(
+        b"ffffffff00000001000000000000000000000000fffffffffffffffffffffffc",
+        16,
+    )
+    .unwrap()
 }
 
 pub fn get_secp256r1_b() -> BigUint {
-    BigUint::parse_bytes(b"5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b", 16).unwrap()
+    BigUint::parse_bytes(
+        b"5ac635d8aa3a93e7b3ebbd55769886bc651d06b0cc53b0f63bce3c3e27d2604b",
+        16,
+    )
+    .unwrap()
 }
 
 pub fn get_ed25519_d2() -> BigUint {
-    BigUint::parse_bytes(b"16295367250680780974490674513165176452449235426866156013048779062215315747161", 10).unwrap()
+    BigUint::parse_bytes(
+        b"16295367250680780974490674513165176452449235426866156013048779062215315747161",
+        10,
+    )
+    .unwrap()
 }
 
 pub fn fq_to_biguint<F: PrimeField>(val: F) -> BigUint {
@@ -97,13 +109,12 @@ pub fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
     let mut sig = signature.clone();
     let is_y_odd = (sig[32] & 0x80) != 0;
     sig.as_mut()[32] &= 0x7f;
-    (sig, is_y_odd )
+    (sig, is_y_odd)
 }
 
 pub fn fuel_decode_signature_bytes(signature: &Vec<u8>) -> (Vec<u8>, bool) {
     let mut sig = signature.clone();
     let is_y_odd = (sig[32] & 0x80) != 0;
     sig[32] &= 0x7f;
-    (sig, is_y_odd )
+    (sig, is_y_odd)
 }
-

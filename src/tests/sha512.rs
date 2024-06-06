@@ -1,19 +1,13 @@
-use rand::RngCore;
-use rand_chacha::ChaCha8Rng;
-use rand_chacha::rand_core::SeedableRng;
-use sha2::Digest;
-use byteorder::{ByteOrder, BigEndian};
 use crate::gpu::{
-    create_empty_sb,
-    execute_pipeline,
-    create_bind_group,
-    create_sb_with_data,
-    get_device_and_queue,
-    create_command_encoder,
-    create_compute_pipeline,
-    finish_encoder_and_read_from_gpu,
+    create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
 };
 use crate::shader::render_sha512_96_tests;
+use byteorder::{BigEndian, ByteOrder};
+use rand::RngCore;
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+use sha2::Digest;
 
 #[serial_test::serial]
 #[tokio::test]
@@ -28,11 +22,7 @@ pub async fn sha512_96() {
     }
 }
 
-pub async fn do_sha512_96_test(
-    input_bytes: &[u8],
-    filename: &str,
-    entrypoint: &str,
-) {
+pub async fn do_sha512_96_test(input_bytes: &[u8], filename: &str, entrypoint: &str) {
     let mut hasher = sha2::Sha512::new();
     hasher.update(input_bytes);
     let expected = hasher.finalize();
@@ -51,25 +41,27 @@ pub async fn do_sha512_96_test(
 
     let mut command_encoder = create_command_encoder(&device);
 
-    let bind_group = create_bind_group(
-        &device,
+    let bind_group = create_bind_group(&device, &compute_pipeline, 0, &[&input_buf, &result_buf]);
+
+    execute_pipeline(
+        &mut command_encoder,
         &compute_pipeline,
-        0,
-        &[&input_buf, &result_buf],
+        &bind_group,
+        1,
+        1,
+        1,
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
-
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
 
     let result_bytes: Vec<u8> = flip_endianness(&results[0]);
 
-    assert_eq!(hex::encode(result_bytes.as_slice()), hex::encode(expected.as_slice()));
+    assert_eq!(
+        hex::encode(result_bytes.as_slice()),
+        hex::encode(expected.as_slice())
+    );
 }
 
 pub fn flip_endianness(slice: &[u32]) -> Vec<u8> {

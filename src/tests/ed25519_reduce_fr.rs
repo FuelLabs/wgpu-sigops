@@ -1,19 +1,13 @@
-use rand::RngCore;
-use rand_chacha::ChaCha8Rng;
-use rand_chacha::rand_core::SeedableRng;
-use num_bigint::BigUint;
-use byteorder::{ByteOrder, BigEndian};
 use crate::gpu::{
-    create_empty_sb,
-    execute_pipeline,
-    create_bind_group,
-    create_sb_with_data,
-    get_device_and_queue,
-    create_command_encoder,
-    create_compute_pipeline,
-    finish_encoder_and_read_from_gpu,
+    create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
 };
 use crate::shader::render_ed25519_reduce_fr_tests;
+use byteorder::{BigEndian, ByteOrder};
+use num_bigint::BigUint;
+use rand::RngCore;
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 
 #[serial_test::serial]
 #[tokio::test]
@@ -25,15 +19,12 @@ pub async fn ed25519_reduce_fr() {
         rng.fill_bytes(&mut input);
         let x = BigUint::from_bytes_be(&input);
 
-        do_ed25519_reduce_fr_test(&x, "ed25519_reduce_fr_tests.wgsl", "test_ed25519_reduce_fr").await;
+        do_ed25519_reduce_fr_test(&x, "ed25519_reduce_fr_tests.wgsl", "test_ed25519_reduce_fr")
+            .await;
     }
 }
 
-pub async fn do_ed25519_reduce_fr_test(
-    input: &BigUint,
-    filename: &str,
-    entrypoint: &str,
-) {
+pub async fn do_ed25519_reduce_fr_test(input: &BigUint, filename: &str, entrypoint: &str) {
     let p = crate::moduli::ed25519_fr_modulus_biguint();
     let expected = input % &p;
 
@@ -53,21 +44,20 @@ pub async fn do_ed25519_reduce_fr_test(
 
     let mut command_encoder = create_command_encoder(&device);
 
-    let bind_group = create_bind_group(
-        &device,
+    let bind_group = create_bind_group(&device, &compute_pipeline, 0, &[&input_buf, &result_buf]);
+
+    execute_pipeline(
+        &mut command_encoder,
         &compute_pipeline,
-        0,
-        &[&input_buf, &result_buf],
+        &bind_group,
+        1,
+        1,
+        1,
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
-
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
 
     let result = multiprecision::bigint::to_biguint_le(&results[0], 32, 8);
 

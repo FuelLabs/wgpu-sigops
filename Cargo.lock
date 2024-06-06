@@ -2274,7 +2274,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wgpu_secp256"
+name = "wgpu_sig_ops"
 version = "0.1.0"
 dependencies = [
  "ark-ec",

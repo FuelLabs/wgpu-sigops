@@ -1,4 +1,4 @@
-use ark_ff::{ PrimeField, BigInteger };
+use ark_ff::{BigInteger, PrimeField};
 use num_bigint::BigUint;
 
 pub fn secp256k1_fq_modulus_biguint() -> BigUint {

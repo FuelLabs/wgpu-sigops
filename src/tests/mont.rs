@@ -1,24 +1,18 @@
-use crate::moduli;
-use stopwatch::Stopwatch;
-use multiprecision::{ bigint, mont };
-use multiprecision::mont::{ calc_nsafe, calc_rinv_and_n0 };
-use multiprecision::utils::calc_num_limbs;
-use rand::Rng;
-use rand_chacha::ChaCha8Rng;
-use rand_chacha::rand_core::SeedableRng;
-use num_bigint::{ BigUint, RandomBits };
 use crate::gpu::{
-    create_empty_sb,
-    execute_pipeline,
-    create_bind_group,
-    create_sb_with_data,
-    get_device_and_queue,
-    create_command_encoder,
-    create_compute_pipeline,
-    finish_encoder_and_read_from_gpu,
+    create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
 };
-use crate::shader::{ render_bigint_ff_mont_tests, render_mont_sqrt_case3mod4_test };
+use crate::moduli;
+use crate::shader::{render_bigint_ff_mont_tests, render_mont_sqrt_case3mod4_test};
 use crate::tests::get_secp256k1_b;
+use multiprecision::mont::{calc_nsafe, calc_rinv_and_n0};
+use multiprecision::utils::calc_num_limbs;
+use multiprecision::{bigint, mont};
+use num_bigint::{BigUint, RandomBits};
+use rand::Rng;
+use rand_chacha::rand_core::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+use stopwatch::Stopwatch;
 
 fn gen_rng() -> ChaCha8Rng {
     ChaCha8Rng::seed_from_u64(2)
@@ -42,7 +36,8 @@ pub async fn mont_mul_benchmarks() {
             force_fallback_adapter: false,
             compatible_surface: None,
         })
-        .await.unwrap();
+        .await
+        .unwrap();
     println!("{:?}", adapter.get_info());
 
     println!("Benchmarks for {} serial Montgomery multiplications:", cost);
@@ -58,7 +53,18 @@ pub async fn mont_mul_benchmarks() {
 
         let mut total = 0;
         for i in 0..NUM_RUNS_PER_TEST + 1 {
-            let elapsed = do_mont_benchmark(&ar, &br, &p, &r, log_limb_size, num_limbs, "benchmarks.wgsl", "benchmark_mont_mul", cost).await;
+            let elapsed = do_mont_benchmark(
+                &ar,
+                &br,
+                &p,
+                &r,
+                log_limb_size,
+                num_limbs,
+                "benchmarks.wgsl",
+                "benchmark_mont_mul",
+                cost,
+            )
+            .await;
 
             if i > 0 {
                 total += elapsed;
@@ -66,7 +72,10 @@ pub async fn mont_mul_benchmarks() {
         }
 
         let average = total as u32 / NUM_RUNS_PER_TEST as u32;
-        println!("for {}-bit limbs, mont_mul took an average of {}ms over {} runs", log_limb_size, average, NUM_RUNS_PER_TEST);
+        println!(
+            "for {}-bit limbs, mont_mul took an average of {}ms over {} runs",
+            log_limb_size, average, NUM_RUNS_PER_TEST
+        );
     }
 }
 
@@ -92,7 +101,17 @@ pub async fn mont_mul() {
                 let ar = &a * &r % *p;
                 let br = &b * &r % *p;
 
-                do_mont_test(&ar, &br, &p, &r, log_limb_size, num_limbs, "mont_tests.wgsl", "test_mont_mul").await;
+                do_mont_test(
+                    &ar,
+                    &br,
+                    &p,
+                    &r,
+                    log_limb_size,
+                    num_limbs,
+                    "mont_tests.wgsl",
+                    "test_mont_mul",
+                )
+                .await;
             }
         }
     }
@@ -122,7 +141,15 @@ pub async fn do_mont_test(
         mont::mont_mul_optimised(&ar_limbs, &br_limbs, &p_limbs, n0, num_limbs, log_limb_size)
     } else if log_limb_size == 14 || log_limb_size == 15 {
         let nsafe = calc_nsafe(log_limb_size);
-        mont::mont_mul_modified(&ar_limbs, &br_limbs, &p_limbs, n0, num_limbs, log_limb_size, nsafe)
+        mont::mont_mul_modified(
+            &ar_limbs,
+            &br_limbs,
+            &p_limbs,
+            n0,
+            num_limbs,
+            log_limb_size,
+            nsafe,
+        )
     } else {
         unimplemented!();
     };
@@ -135,7 +162,8 @@ pub async fn do_mont_test(
     let b_buf = create_sb_with_data(&device, &br_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source =
+        render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -147,20 +175,21 @@ pub async fn do_mont_test(
         &[&a_buf, &b_buf, &result_buf],
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
-
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
-
-    let result = bigint::to_biguint_le(
-        &results[0][0..num_limbs].to_vec(),
-        num_limbs,
-        log_limb_size,
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
     );
+
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
+
+    let result =
+        bigint::to_biguint_le(&results[0][0..num_limbs].to_vec(), num_limbs, log_limb_size);
 
     assert_eq!(result, expected);
 }
@@ -170,7 +199,7 @@ fn expensive_computation(
     br: &BigUint,
     p: &BigUint,
     rinv: &BigUint,
-    cost: u32
+    cost: u32,
 ) -> BigUint {
     let mut result = ar.clone();
     for _ in 1..cost {
@@ -204,7 +233,8 @@ pub async fn do_mont_benchmark(
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
     let cost_buf = create_sb_with_data(&device, &[cost]);
 
-    let source = render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source =
+        render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -217,21 +247,22 @@ pub async fn do_mont_benchmark(
     );
 
     let sw = Stopwatch::start_new();
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
 
-    let results = finish_encoder_and_read_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    ).await;
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
     let elapsed = sw.elapsed_ms();
 
-    let result = bigint::to_biguint_le(
-        &results[0][0..num_limbs].to_vec(),
-        num_limbs,
-        log_limb_size,
-    );
+    let result =
+        bigint::to_biguint_le(&results[0][0..num_limbs].to_vec(), num_limbs, log_limb_size);
 
     assert_eq!(result, expected);
 
@@ -264,7 +295,16 @@ pub async fn mont_sqrt_case3mod4() {
                 let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
                 let x: BigUint = &s * &s % *p;
 
-                do_mont_sqrt_case3mod4_test(&x, &p, &r, log_limb_size, num_limbs, "mont_sqrt_case3mod4_tests.wgsl", "test_mont_sqrt_case3mod4").await
+                do_mont_sqrt_case3mod4_test(
+                    &x,
+                    &p,
+                    &r,
+                    log_limb_size,
+                    num_limbs,
+                    "mont_sqrt_case3mod4_tests.wgsl",
+                    "test_mont_sqrt_case3mod4",
+                )
+                .await
             }
         }
     }
@@ -304,25 +344,27 @@ pub async fn do_mont_sqrt_case3mod4_test(
         &[&xr_buf, &result_a_buf, &result_b_buf],
     );
 
-    execute_pipeline(&mut command_encoder, &compute_pipeline, &bind_group, 1, 1, 1);
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
 
     let results = finish_encoder_and_read_from_gpu(
         &device,
         &queue,
         Box::new(command_encoder),
         &[result_a_buf, result_b_buf],
-    ).await;
+    )
+    .await;
 
-    let result_a = bigint::to_biguint_le(
-        &results[0][0..num_limbs].to_vec(),
-        num_limbs,
-        log_limb_size,
-    );
-    let result_b = bigint::to_biguint_le(
-        &results[1][0..num_limbs].to_vec(),
-        num_limbs,
-        log_limb_size,
-    );
+    let result_a =
+        bigint::to_biguint_le(&results[0][0..num_limbs].to_vec(), num_limbs, log_limb_size);
+    let result_b =
+        bigint::to_biguint_le(&results[1][0..num_limbs].to_vec(), num_limbs, log_limb_size);
 
     assert!(result_a == expected_a || result_a == expected_b);
     assert!(result_b == expected_b || result_b == expected_a);
