@@ -40,6 +40,12 @@ unit tests, include:
 - Shamir-Strauss multiplication
 - Extended Twisted Edwards curve point addition and doubling
 
+These tests execute the same operations in CPU and in GPU, and compare the
+result to ensure correctness. For instance, for the ECDSA tests, the output of
+the shader is checked against the output of the relevant ECDSA signature
+recovery function from the
+[`fuel-crypto`](https://crates.io/crates/fuel-crypto) library.
+
 ## Montgomery multiplication benchmarks
 
 These benchmarks can help select the best choice of limb size for different platforms.
