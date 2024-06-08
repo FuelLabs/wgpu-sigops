@@ -354,9 +354,9 @@ fn projective_strauss_shamir_mul(
             // infinity, which jacobian_add_2007_bl_unsafe doesn't support
             result = point_to_add;
             result_is_inf = false;
-        } else {
-            result = projective_add_2007_bl_unsafe(&result, &point_to_add, p);
+            continue;
         }
+        result = projective_add_2007_bl_unsafe(&result, &point_to_add, p);
     }
 
     return result;

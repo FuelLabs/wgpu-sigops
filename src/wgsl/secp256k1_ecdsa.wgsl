@@ -1,7 +1,7 @@
 fn secp256k1_ecrecover(
     sig_r_bytes: ptr<function, array<u32, 32>>,
     sig_s_bytes: ptr<function, array<u32, 32>>,
-    msg: ptr<function, BigInt>,
+    msg_bytes: ptr<function, array<u32, 32>>,
     p: ptr<function, BigInt>,
     p_wide: ptr<function, BigIntWide>,
     scalar_p: ptr<function, BigInt>,
@@ -18,7 +18,7 @@ fn secp256k1_ecrecover(
     var sig_r = bytes_be_to_limbs_le(sig_r_bytes);
     var sig_s = bytes_be_to_limbs_le(&ds);
    
-    var z = *msg;
+    var z = bytes_be_to_limbs_le(msg_bytes);
 
     if (bigint_gte(&z, scalar_p)) {
         z = bigint_sub(scalar_p, &z);
@@ -71,5 +71,9 @@ fn secp256k1_ecrecover(
 
     var g = get_secp256k1_generator();
 
-    return projective_strauss_shamir_mul(&g, &recovered_r, &u1, &u2, p);
+    var u1g = projective_mul(&g, &u1, p);
+    var u2r = projective_mul(&recovered_r, &u2, p);
+    return projective_add_2007_bl_unsafe(&u1g, &u2r, p);
+
+    /*return projective_strauss_shamir_mul(&g, &recovered_r, &u1, &u2, p);*/
 }

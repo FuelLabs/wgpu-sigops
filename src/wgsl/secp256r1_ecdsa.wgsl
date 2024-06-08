@@ -1,7 +1,7 @@
 fn secp256r1_ecrecover(
     sig_r_bytes: ptr<function, array<u32, 32>>,
     sig_s_bytes: ptr<function, array<u32, 32>>,
-    msg: ptr<function, BigInt>,
+    msg_bytes: ptr<function, array<u32, 32>>,
     p: ptr<function, BigInt>,
     p_wide: ptr<function, BigIntWide>,
     scalar_p: ptr<function, BigInt>,
@@ -18,7 +18,7 @@ fn secp256r1_ecrecover(
     var sig_r = bytes_be_to_limbs_le(sig_r_bytes);
     var sig_s = bytes_be_to_limbs_le(&ds);
    
-    var z = *msg;
+    var z = bytes_be_to_limbs_le(msg_bytes);
 
     if (bigint_gte(&z, scalar_p)) {
         z = bigint_sub(scalar_p, &z);

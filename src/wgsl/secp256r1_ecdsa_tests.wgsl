@@ -10,7 +10,7 @@
 {% include "bytes_be_to_limbs_le.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> sig: array<u32, 16>;
-@group(0) @binding(1) var<storage, read_write> msg: BigInt;
+@group(0) @binding(1) var<storage, read_write> msg: array<u32, 8>;
 @group(0) @binding(2) var<storage, read_write> result: Point;
 
 @compute
@@ -32,7 +32,17 @@ fn test_secp256r1_recover(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
     }
 
-    var msg_bigint = msg;
+    var msg_u32s: array<u32, 8>;
+    for (var i = 0u; i < 8u; i ++) {
+        msg_u32s[i] = msg[i];
+    }
+    var msg_bytes_be: array<u32, 32>;
+    for (var i = 0u; i < 8u; i++) {
+        let m = msg_u32s[i];
+        for (var j = 0u; j < 4u; j ++) {
+            msg_bytes_be[(i * 4 + j)] = (m >> (j * 8u)) & 255u;
+        }
+    }
 
     var p_bigint = get_p();
     var p_wide = get_p_wide();
@@ -43,5 +53,5 @@ fn test_secp256r1_recover(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var r = get_r();
     var rinv = get_rinv();
 
-    result = secp256r1_ecrecover(&r_bytes_be, &s_bytes_be, &msg_bigint, &p_bigint, &p_wide, &scalar_p, &scalar_p_wide, &r, &rinv, &mu_fp, &mu_fr);
+    result = secp256r1_ecrecover(&r_bytes_be, &s_bytes_be, &msg_bytes_be, &p_bigint, &p_wide, &scalar_p, &scalar_p_wide, &r, &rinv, &mu_fp, &mu_fr);
 }

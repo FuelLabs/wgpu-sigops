@@ -53,12 +53,10 @@ pub async fn test_secp256r1_ecrecover() {
 
             let pk = Affine::new(pk_x, pk_y);
 
-            let msg = BigUint::from_bytes_be(&msg_bytes);
-
             do_secp256r1_test(
                 i,
                 &sig_bytes,
-                &msg,
+                &msg_bytes,
                 &pk,
                 log_limb_size,
                 projective_to_affine_func,
@@ -73,7 +71,7 @@ pub async fn test_secp256r1_ecrecover() {
 pub async fn do_secp256r1_test(
     i: u32,
     sig_bytes: &[u8],
-    msg: &BigUint,
+    msg_bytes: &[u8],
     expected_pk: &Affine,
     log_limb_size: u32,
     to_affine_func: fn(Fq, Fq, Fq) -> Affine,
@@ -88,16 +86,18 @@ pub async fn do_secp256r1_test(
     let rinv = res.0;
 
     let _sig = BigUint::from_bytes_be(sig_bytes);
-    let msg_limbs = bigint::from_biguint_le(&msg, num_limbs, log_limb_size);
+    let _msg = BigUint::from_bytes_be(&msg_bytes);
 
     let (device, queue) = get_device_and_queue().await;
     let source = render_secp256r1_ecdsa_tests("src/wgsl/", filename, log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let sig_u32s: Vec<u32> = bytemuck::cast_slice(&sig_bytes).to_vec();
+    let msg_u32s: Vec<u32> = bytemuck::cast_slice(&msg_bytes).to_vec();
+
     let sig_buf = create_sb_with_data(&device, &sig_u32s);
-    let msg_buf = create_sb_with_data(&device, &msg_limbs);
-    let result_buf = create_empty_sb(&device, msg_buf.size() * 3);
+    let msg_buf = create_sb_with_data(&device, &msg_u32s);
+    let result_buf = create_empty_sb(&device, (num_limbs * 3 * std::mem::size_of::<u32>()) as u64);
 
     let mut command_encoder = create_command_encoder(&device);
 

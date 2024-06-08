@@ -40,6 +40,117 @@ pub fn gen_constant_bigint(
     result
 }
 
+pub fn do_render_benchmarks(
+    p: &BigUint,
+    scalar_p: &BigUint,
+    b: &BigUint,
+    log_limb_size: u32,
+    template: &Template,
+    num_x_workgroups: usize,
+    num_y_workgroups: usize,
+    num_z_workgroups: usize,
+) -> String {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let two_pow_word_size = 2u32.pow(log_limb_size);
+    let mask = two_pow_word_size - 1u32;
+    let nsafe = mont::calc_nsafe(log_limb_size);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+    let n0 = res.1;
+
+    let p_bitlength = calc_bitwidth(&p);
+    let slack = num_limbs * log_limb_size as usize - p_bitlength;
+
+    let r_bigint = gen_constant_bigint("r", &(&r % p), num_limbs, log_limb_size);
+    let rinv_bigint = gen_constant_bigint("rinv", &(&rinv % p), num_limbs, log_limb_size);
+    let p_bigint = gen_constant_bigint("p", p, num_limbs, log_limb_size);
+    let scalar_p_bigint = gen_constant_bigint("scalar_p", scalar_p, num_limbs, log_limb_size);
+
+    let br = b * &r % p;
+    let br_bigint = gen_constant_bigint("br", &br, num_limbs, log_limb_size);
+
+    let br3 = (BigUint::from(3u32) * b * &r) % p;
+    let br3_bigint = gen_constant_bigint("br3", &br3, num_limbs, log_limb_size);
+
+    let mu_fp_bigint = gen_constant_bigint("mu_fp", &ff::gen_mu(&p), num_limbs, log_limb_size);
+    let mu_fr_bigint =
+        gen_constant_bigint("mu_fr", &ff::gen_mu(&scalar_p), num_limbs, log_limb_size);
+
+    let secp256k1_generator_x =
+        BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_X.into_bigint().to_bytes_be());
+    let secp256k1_generator_y =
+        BigUint::from_bytes_be(&ark_secp256k1::G_GENERATOR_Y.into_bigint().to_bytes_be());
+    let secp256k1_generator_xr = secp256k1_generator_x * &r % p;
+    let secp256k1_generator_yr = secp256k1_generator_y * &r % p;
+    let secp256k1_generator_xr_bigint = gen_constant_bigint(
+        "secp256k1_generator_xr",
+        &secp256k1_generator_xr,
+        num_limbs,
+        log_limb_size,
+    );
+    let secp256k1_generator_yr_bigint = gen_constant_bigint(
+        "secp256k1_generator_yr",
+        &secp256k1_generator_yr,
+        num_limbs,
+        log_limb_size,
+    );
+
+    let secp256r1_generator_x =
+        BigUint::from_bytes_be(&ark_secp256r1::G_GENERATOR_X.into_bigint().to_bytes_be());
+    let secp256r1_generator_y =
+        BigUint::from_bytes_be(&ark_secp256r1::G_GENERATOR_Y.into_bigint().to_bytes_be());
+    let secp256r1_generator_xr = secp256r1_generator_x * &r % p;
+    let secp256r1_generator_yr = secp256r1_generator_y * &r % p;
+    let secp256r1_generator_xr_bigint = gen_constant_bigint(
+        "secp256r1_generator_xr",
+        &secp256r1_generator_xr,
+        num_limbs,
+        log_limb_size,
+    );
+    let secp256r1_generator_yr_bigint = gen_constant_bigint(
+        "secp256r1_generator_yr",
+        &secp256r1_generator_yr,
+        num_limbs,
+        log_limb_size,
+    );
+
+    let sqrt_case3mod4_exponent = (p + BigUint::from(1u32)) / BigUint::from(4u32);
+    let sqrt_case3mod4_exponent_bigint = gen_constant_bigint(
+        "sqrt_case3mod4_exponent",
+        &sqrt_case3mod4_exponent,
+        num_limbs,
+        log_limb_size,
+    );
+
+    let context = context! {
+        num_limbs => num_limbs,
+        log_limb_size => log_limb_size,
+        two_pow_word_size => two_pow_word_size,
+        mask => mask,
+        nsafe => nsafe,
+        n0 => n0,
+        slack => slack,
+        r_bigint => r_bigint,
+        rinv_bigint => rinv_bigint,
+        p_bigint => p_bigint,
+        scalar_p_bigint => scalar_p_bigint,
+        br_bigint => br_bigint,
+        br3_bigint => br3_bigint,
+        mu_fp_bigint => mu_fp_bigint,
+        mu_fr_bigint => mu_fr_bigint,
+        secp256k1_generator_xr_bigint => secp256k1_generator_xr_bigint,
+        secp256k1_generator_yr_bigint => secp256k1_generator_yr_bigint,
+        secp256r1_generator_xr_bigint => secp256r1_generator_xr_bigint,
+        secp256r1_generator_yr_bigint => secp256r1_generator_yr_bigint,
+        sqrt_case3mod4_exponent_bigint => sqrt_case3mod4_exponent_bigint,
+        num_x_workgroups => num_x_workgroups,
+        num_y_workgroups => num_y_workgroups,
+        num_z_workgroups => num_z_workgroups,
+    };
+    template.render(context).unwrap()
+}
+
 pub fn do_render(
     p: &BigUint,
     scalar_p: &BigUint,
@@ -269,6 +380,59 @@ pub fn render_secp256k1_curve_tests(
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
+}
+
+pub fn render_secp256k1_ecdsa_benchmarks(
+    template_path: &str,
+    template_file: &str,
+    log_limb_size: u32,
+    num_x_workgroups: usize,
+    num_y_workgroups: usize,
+    num_z_workgroups: usize,
+) -> String {
+    let mut env = Environment::new();
+
+    let b = get_secp256k1_b();
+    let p = crate::moduli::secp256k1_fq_modulus_biguint();
+    let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
+
+    let source = read_from_file(template_path, "bigint.wgsl");
+    env.add_template("bigint.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "ff.wgsl");
+    env.add_template("ff.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "mont.wgsl");
+    env.add_template("mont.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp256k1_curve.wgsl");
+    env.add_template("secp256k1_curve.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "signature.wgsl");
+    env.add_template("signature.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp256k1_ecdsa.wgsl");
+    env.add_template("secp256k1_ecdsa.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp_constants.wgsl");
+    env.add_template("secp_constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "constants.wgsl");
+    env.add_template("constants.wgsl", &source).unwrap();
+
+    let source = read_from_file(template_path, "secp256k1_curve_generators.wgsl");
+    env.add_template("secp256k1_curve_generators.wgsl", &source)
+        .unwrap();
+
+    let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
+    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
+        .unwrap();
+
+    let source = read_from_file(template_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    do_render_benchmarks(&p, &scalar_p, &b, log_limb_size, &template, num_x_workgroups, num_y_workgroups, num_z_workgroups)
 }
 
 pub fn render_secp256k1_ecdsa_tests(

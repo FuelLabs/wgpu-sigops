@@ -25,8 +25,12 @@ pub async fn get_device_and_queue() -> (wgpu::Device, wgpu::Queue) {
         .await
         .unwrap();
 
+    //let limits = device.limits();
+    //println!("{:?}", limits);
+
     //let info = adapter.get_info();
     //println!("{:?}", info);
+
     (device, queue)
 }
 
@@ -41,6 +45,15 @@ pub fn create_sb_with_data(device: &wgpu::Device, data: &[u32]) -> wgpu::Buffer 
         usage: wgpu::BufferUsages::STORAGE
             | wgpu::BufferUsages::COPY_DST
             | wgpu::BufferUsages::COPY_SRC,
+    })
+}
+
+pub fn create_ub_with_data(device: &wgpu::Device, data: &[u32]) -> wgpu::Buffer {
+    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+        label: None,
+        contents: bytemuck::cast_slice(data),
+        usage: wgpu::BufferUsages::UNIFORM
+            | wgpu::BufferUsages::COPY_DST,
     })
 }
 
