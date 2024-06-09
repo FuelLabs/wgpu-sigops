@@ -70,10 +70,12 @@ fn secp256k1_ecrecover(
     var u2 = ff_mul(&r_x_inv, &sig_s, scalar_p, scalar_p_wide, mu_fr);
 
     var g = get_secp256k1_generator();
-
     var u1g = projective_mul(&g, &u1, p);
     var u2r = projective_mul(&recovered_r, &u2, p);
     return projective_add_2007_bl_unsafe(&u1g, &u2r, p);
 
+    // At a high enough thread count, using the projective_strauss_shamir_mul()
+    // function will make the shader silently fail and the result buffer will
+    // be 0s
     /*return projective_strauss_shamir_mul(&g, &recovered_r, &u1, &u2, p);*/
 }

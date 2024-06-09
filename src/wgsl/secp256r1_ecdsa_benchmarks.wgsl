@@ -1,12 +1,12 @@
 {% include "bigint.wgsl" %}
 {% include "ff.wgsl" %}
 {% include "mont.wgsl" %}
-{% include "secp256k1_curve.wgsl" %}
+{% include "secp256r1_curve.wgsl" %}
 {% include "signature.wgsl" %}
-{% include "secp256k1_ecdsa.wgsl" %}
+{% include "secp256r1_ecdsa.wgsl" %}
 {% include "constants.wgsl" %}
 {% include "secp_constants.wgsl" %}
-{% include "secp256k1_curve_generators.wgsl" %}
+{% include "secp256r1_curve_generators.wgsl" %}
 {% include "bytes_be_to_limbs_le.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> sig: array<u32>;
@@ -16,7 +16,7 @@
 
 @compute
 @workgroup_size(256)
-fn benchmark_secp256k1_recover(@builtin(global_invocation_id) global_id: vec3<u32>) {
+fn benchmark_secp256r1_recover(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let gidx = global_id.x; 
     let gidy = global_id.y; 
     let gidz = global_id.z; 
@@ -62,5 +62,5 @@ fn benchmark_secp256k1_recover(@builtin(global_invocation_id) global_id: vec3<u3
     var r = get_r();
     var rinv = get_rinv();
 
-    result[id] = secp256k1_ecrecover(&r_bytes_be, &s_bytes_be, &msg_bytes_be, &p_bigint, &p_wide, &scalar_p, &scalar_p_wide, &r, &rinv, &mu_fp, &mu_fr);
+    result[id] = secp256r1_ecrecover(&r_bytes_be, &s_bytes_be, &msg_bytes_be, &p_bigint, &p_wide, &scalar_p, &scalar_p_wide, &r, &rinv, &mu_fp, &mu_fr);
 }
