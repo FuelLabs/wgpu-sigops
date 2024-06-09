@@ -63,3 +63,29 @@ pub fn test_compute_num_workgroups() {
         let _ = compute_num_workgroups(num_threads, workgroup_size);
     }
 }
+
+pub fn construct_table(
+    data: Vec<(usize, u32, u32)>,
+) -> String {
+    if data.len() == 0 {
+        return String::from("No data.");
+    }
+
+    let mut table = String::new();
+    table.push_str("| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |\n");
+    table.push_str("| ------------------ | ------------------ | ------------------ |\n");
+
+    for row in data {
+        table.push_str(format!("| {: <18} | {: <18} | {: <18} |\n", row.0, row.1, row.2).as_str());
+    }
+    table.push_str("\nGPU timings include data transfer.");
+
+    table
+}
+
+#[test]
+pub fn test_construct_table() {
+    let data = vec![(8, 2, 2)];
+    let table = construct_table(data);
+    println!("{}", table);
+}

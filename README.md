@@ -15,6 +15,12 @@ cd wgpu_sig_ops &&
 cargo test
 ```
 
+### Run benchmarks
+
+```
+cargo test --release multiple_benchmarks -- --nocapture
+```
+
 ## Overview
 
 This repository contains GPU shaders for the following cryptographic operations:

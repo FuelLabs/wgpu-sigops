@@ -24,17 +24,49 @@ use stopwatch::Stopwatch;
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn verify() {
-    let p = crate::moduli::ed25519_fq_modulus_biguint();
+pub async fn ed25519_ecverify_multiple_benchmarks() {
+    let check = false;
+    let log_limb_size = 13u32;
+    let start = 10;
+    let end = 18;
+
+    let mut data = Vec::with_capacity(end - start);
+    for i in start..end {
+        let num_signatures = 2u32.pow(i as u32) as usize;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
+
+        data.push((num_signatures, cpu_ms, gpu_ms));
+    }
+
+    let table = crate::benchmarks::construct_table(data);
+    println!("ed25519 signature verification benchmarks: \n{}\n\n", table);
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn ed25519_ecverify_benchmarks() {
     let check = true;
     let log_limb_size = 13u32;
+    let num_signatures = 2u32.pow(13u32) as usize;
+
+    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
+
+    println!("CPU took {}ms to recover {} ed25519 EdDSA signatures in serial.", cpu_ms, num_signatures);
+    println!("GPU took {}ms to recover {} ed25519 EdDSA signatures in parallel (including data transfer cost).", gpu_ms, num_signatures);
+}
+
+pub async fn do_benchmark(
+    check: bool,
+    log_limb_size: u32,
+    num_signatures: usize,
+) -> (u32, u32) {
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     //let r = mont::calc_mont_radix(num_limbs, log_limb_size);
     //let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
     //let rinv = res.0;
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
-    let num_signatures = 2u32.pow(13u32) as usize;
     let workgroup_size = 256;
     let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = compute_num_workgroups(num_signatures, workgroup_size);
 
@@ -67,9 +99,7 @@ pub async fn verify() {
     for i in 0..num_signatures {
         let _ = curve25519_ecverify(&verifying_keys[i], &signatures[i], &messages[i].as_slice());
     }
-    let elapsed = sw.elapsed_ms();
-
-    println!("CPU took {}ms to recover {} ed25519 EdDSA signatures in serial.", elapsed, num_signatures);
+    let cpu_ms = sw.elapsed_ms();
 
     // Start the GPU stopwatch
     let sw = Stopwatch::start_new();
@@ -137,9 +167,7 @@ pub async fn verify() {
         finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
             .await;
 
-    let elapsed = sw.elapsed_ms();
-
-    println!("GPU took {}ms to recover {} ed25519 EdDSA signatures in parallel (including data transfer cost).", elapsed, num_signatures);
+    let gpu_ms = sw.elapsed_ms();
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -174,4 +202,6 @@ pub async fn verify() {
             assert_eq!(recovered, expected_pks[i]);
         }
     }
+
+    (cpu_ms as u32, gpu_ms as u32)
 }

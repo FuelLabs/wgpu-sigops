@@ -22,9 +22,42 @@ use stopwatch::Stopwatch;
 
 #[serial_test::serial]
 #[tokio::test]
+pub async fn secp256r1_ecrecover_multiple_benchmarks() {
+    let check = false;
+    let log_limb_size = 13u32;
+    let start = 10;
+    let end = 18;
+
+    let mut data = Vec::with_capacity(end - start);
+    for i in start..end {
+        let num_signatures = 2u32.pow(i as u32) as usize;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
+
+        data.push((num_signatures, cpu_ms, gpu_ms));
+    }
+
+    let table = crate::benchmarks::construct_table(data);
+    println!("secp256r1 signature verification benchmarks: \n{}\n\n", table);
+}
+
+#[serial_test::serial]
+#[tokio::test]
 pub async fn secp256r1_ecrecover_benchmarks() {
     let check = true;
     let log_limb_size = 13u32;
+    let num_signatures = 2u32.pow(13u32) as usize;
+
+    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
+
+    println!("CPU took {}ms to recover {} secp256r1 ECDSA signatures in serial.", cpu_ms, num_signatures);
+    println!("GPU took {}ms to recover {} secp256r1 ECDSA signatures in parallel (including data transfer cost).", gpu_ms, num_signatures);
+}
+
+pub async fn do_benchmark(
+    check: bool,
+    log_limb_size: u32,
+    num_signatures: usize,
+) -> (u32, u32) {
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
     let r = mont::calc_mont_radix(num_limbs, log_limb_size);
@@ -34,7 +67,6 @@ pub async fn secp256r1_ecrecover_benchmarks() {
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
 
-    let num_signatures = 2u32.pow(13u32) as usize;
     let workgroup_size = 256;
     let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = compute_num_workgroups(num_signatures, workgroup_size);
 
@@ -70,9 +102,7 @@ pub async fn secp256r1_ecrecover_benchmarks() {
     for i in 0..num_signatures {
         let _ = recover(&signatures[i], &messages[i]);
     }
-    let elapsed = sw.elapsed_ms();
-
-    println!("CPU took {}ms to recover {} secp256r1 ECDSA signatures in serial.", elapsed, num_signatures);
+    let cpu_ms = sw.elapsed_ms();
 
     // Start the GPU stopwatch
     let sw = Stopwatch::start_new();
@@ -125,9 +155,7 @@ pub async fn secp256r1_ecrecover_benchmarks() {
     let results =
         finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
             .await;
-    let elapsed = sw.elapsed_ms();
-
-    println!("GPU took {}ms to recover {} secp256r1 ECDSA signatures in parallel (including data transfer cost).", elapsed, num_signatures);
+    let gpu_ms = sw.elapsed_ms();
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
@@ -163,4 +191,6 @@ pub async fn secp256r1_ecrecover_benchmarks() {
             assert_eq!(result_affine, expected_pks[i]);
         }
     }
+
+    (cpu_ms as u32, gpu_ms as u32)
 }
