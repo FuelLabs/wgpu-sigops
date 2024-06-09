@@ -24,8 +24,10 @@ cargo test --release multiple_benchmarks -- --nocapture
 #### Results
 
 The following benchmarks were run on a 13th Gen Intel(R) Core(TM) i7-13700HX
-machine with an Nvidia RTX A1000 graphics card. The CPU benchmarks were run
-with the `--release` flag, and the GPU timings include data transfer both ways.
+machine with an [Nvidia RTX
+A1000](https://www.notebookcheck.net/NVIDIA-RTX-A1000-Laptop-GPU-GPU-Benchmarks-and-Specs.615862.0.html)
+graphics card (2560 cores). The CPU benchmarks were run with the `--release`
+flag, and the GPU timings include data transfer both ways.
 
 For each benchmark, each signature is handled in parallel by the GPU, while the
 CPU handles it serially. The results show that after a certain number of
