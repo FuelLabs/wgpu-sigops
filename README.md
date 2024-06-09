@@ -21,6 +21,67 @@ cargo test
 cargo test --release multiple_benchmarks -- --nocapture
 ```
 
+#### Results
+
+The following benchmarks were run on a 13th Gen Intel(R) Core(TM) i7-13700HX
+machine with an Nvidia RTX A1000 graphics card. The CPU benchmarks were run
+with the `--release` flag, and the GPU timings include data transfer both ways.
+
+For each benchmark, each signature is handled in parallel by the GPU, while the
+CPU handles it serially. The results show that after a certain number of
+signatures, GPU performance beats CPU.
+
+To ensure a fair comparision, the CPU benchmarks use the same libraries that
+[`fuel-crypto`](https://crates.io/crates/fuel-crypto) uses under the hood:
+
+- [`secp256k1`](https://crates.io/crates/secp256k1), which uses C bindings to `libsecp256k1`
+- [`p256`](https://crates.io/crates/p256), a pure Rust implementation of the secp256r1 curve
+- [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek), a pure Rust
+  implementation of curve25519 and the ed25519 signature scheme.
+
+Further optimisations may improve GPU performance, such as precomputation
+and/or the GLV method for scalar multiplication.
+
+ed25519 signature verification benchmarks: 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 109                | 270                |
+| 2048               | 180                | 240                |
+| 4096               | 360                | 326                |
+| 8192               | 720                | 609                |
+| 16384              | 1441               | 1218               |
+| 32768              | 2883               | 2207               |
+| 65536              | 5768               | 4208               |
+| 131072             | 11532              | 5172               |
+
+secp256k1 signature recovery benchmarks: 
+
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 32                 | 154                |
+| 2048               | 68                 | 131                |
+| 4096               | 129                | 123                |
+| 8192               | 257                | 190                |
+| 16384              | 514                | 346                |
+| 32768              | 1028               | 524                |
+| 65536              | 2056               | 852                |
+| 131072             | 4115               | 1621               |
+
+secp256r1 signature verification benchmarks: 
+
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 256                | 127                | 197                |
+| 512                | 254                | 136                |
+| 1024               | 510                | 156                |
+| 2048               | 1022               | 136                |
+| 4096               | 2044               | 189                |
+| 8192               | 4088               | 279                |
+| 16384              | 8235               | 481                |
+| 32768              | 16351              | 805                |
+| 65536              | 42038              | 1459               |
+| 131072             | 65421              | 2824               |
+
 ## Overview
 
 This repository contains GPU shaders for the following cryptographic operations:

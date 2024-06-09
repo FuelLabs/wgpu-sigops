@@ -25,7 +25,7 @@ use stopwatch::Stopwatch;
 pub async fn secp256r1_ecrecover_multiple_benchmarks() {
     let check = false;
     let log_limb_size = 13u32;
-    let start = 10;
+    let start = 8;
     let end = 18;
 
     let mut data = Vec::with_capacity(end - start);
