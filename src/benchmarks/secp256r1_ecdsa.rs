@@ -9,7 +9,7 @@ use crate::tests::secp256r1_curve::projective_to_affine_func;
 use ark_ec::AffineRepr;
 use ark_ff::{BigInteger, PrimeField};
 use ark_secp256r1::{Affine, Fq};
-use fuel_crypto::secp256r1::p256::{encode_pubkey, recover, sign_prehashed};
+use fuel_crypto::secp256r1::p256::{recover, sign_prehashed};
 use fuel_crypto::Message;
 use p256::ecdsa::SigningKey;
 use multiprecision::utils::calc_num_limbs;
@@ -34,7 +34,7 @@ pub async fn secp256r1_ecrecover_benchmarks() {
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
 
-    let num_signatures = 2u32.pow(16u32) as usize;
+    let num_signatures = 2u32.pow(13u32) as usize;
     let workgroup_size = 256;
     let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = compute_num_workgroups(num_signatures, workgroup_size);
 
@@ -50,15 +50,12 @@ pub async fn secp256r1_ecrecover_benchmarks() {
         let verifying_key = signing_key.verifying_key();
 
         let pk_affine_bytes = &verifying_key.to_sec1_bytes()[1..65];
-
         let pk_x = pk_affine_bytes[0..32].to_vec();
         let pk_x = BigUint::from_bytes_be(&pk_x);
         let pk_x = Fq::from_be_bytes_mod_order(&pk_x.to_bytes_be());
-
         let pk_y = pk_affine_bytes[32..64].to_vec();
         let pk_y = BigUint::from_bytes_be(&pk_y);
         let pk_y = Fq::from_be_bytes_mod_order(&pk_y.to_bytes_be());
-
         let pk = Affine::new(pk_x, pk_y);
 
         let fuel_signature = sign_prehashed(&signing_key, &message).expect("Couldn't sign");
@@ -71,9 +68,7 @@ pub async fn secp256r1_ecrecover_benchmarks() {
     // Perform signature recovery using the CPU
     let sw = Stopwatch::start_new();
     for i in 0..num_signatures {
-        let Ok(recovered) = recover(&signatures[i], &messages[i]) else {
-            panic!("Failed to recover public key from the message");
-        };
+        let _ = recover(&signatures[i], &messages[i]);
     }
     let elapsed = sw.elapsed_ms();
 

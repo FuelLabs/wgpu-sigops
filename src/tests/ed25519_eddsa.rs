@@ -11,7 +11,8 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use crate::curve_algos::coords;
 use crate::curve_algos::ed25519_eddsa::{
     ark_ecverify, compressed_y_to_eteprojective, compute_hash, conditional_assign,
-    conditional_negate, decompress_to_ete_unsafe, is_negative, sqrt_ratio_i,
+    conditional_negate, decompress_to_ete_unsafe, is_negative, sqrt_ratio_i, curve25519_ecverify,
+    compress_ark_projective,
 };
 use fuel_crypto::Message;
 use multiprecision::utils::calc_num_limbs;
@@ -32,7 +33,7 @@ pub async fn verify() {
     let mut rng = ChaCha8Rng::seed_from_u64(1);
 
     for log_limb_size in 13..14 {
-        for _ in 0..1 {
+        for _ in 0..50 {
             let mut message = [0u8; 100];
             rng.fill_bytes(&mut message);
             let message = Message::new(&message);
@@ -74,6 +75,11 @@ pub async fn do_eddsa_test(
     let rinv = res.0;
 
     let expected = ark_ecverify(&verifying_key, &signature, &message);
+
+    let cd_recovered_bytes = curve25519_ecverify(&verifying_key, &signature, &message);
+    let mut ark_recovered_bytes = compress_ark_projective(ark_ecverify(&verifying_key, &signature, &message));
+    ark_recovered_bytes.reverse();
+    assert_eq!(ark_recovered_bytes, cd_recovered_bytes);
 
     let hash1 = compute_hash(&verifying_key, &signature, &message);
     assert_eq!(hash0.as_slice(), hash1.as_slice());

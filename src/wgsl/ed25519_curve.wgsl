@@ -73,6 +73,40 @@ fn ete_dbl_2008_hwcd(
 }
 
 /*
+ * Scalar multiplication using double-and-add
+ */
+fn ete_mul(
+    pt: ptr<function, ETEPoint>,
+    x: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> ETEPoint {
+    var zero: BigInt;
+    var one: BigInt;
+    one.limbs[0] = 1u;
+
+    var result = ETEPoint(zero, one, zero, one);
+    var result_is_inf = true;
+
+    var s = *x;
+    var temp = *pt;
+
+    while (!bigint_is_zero(&s)) {
+        if (!bigint_is_even(&s)) {
+            if (result_is_inf) {
+                result = temp;
+                result_is_inf = false;
+            } else {
+                result = ete_add_2008_hwcd_3(&result, &temp, p);
+            }
+        }
+        temp = ete_dbl_2008_hwcd(&temp, p);
+        s = bigint_div2(&s);
+    }
+
+    return result;
+}
+
+/*
  * Determine ax + by where x and y are scalars and a and b are points.
  * x and y must not be in Montgomery form.
  */

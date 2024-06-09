@@ -10,21 +10,30 @@
 {% include "sha512.wgsl" %}
 {% include "ed25519_reduce_fr.wgsl" %}
 
-@group(0) @binding(0) var<storage, read_write> s: array<u32, 16>;
-@group(0) @binding(1) var<storage, read_write> k: array<u32, 24>;
-@group(0) @binding(2) var<storage, read_write> result: ETEPoint;
+@group(0) @binding(0) var<storage, read_write> s: array<u32>;
+@group(0) @binding(1) var<storage, read_write> k: array<u32>;
+@group(0) @binding(2) var<storage, read_write> result: array<ETEPoint>;
+@group(0) @binding(3) var<uniform> params: vec3<u32>;
 
 @compute
-@workgroup_size(1)
-fn test_verify(@builtin(global_invocation_id) global_id: vec3<u32>) {
+@workgroup_size(256)
+fn benchmark_verify(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    let gidx = global_id.x; 
+    let gidy = global_id.y; 
+    let gidz = global_id.z; 
+    let num_x_workgroups = params[0];
+    let num_y_workgroups = params[1];
+    let num_z_workgroups = params[2];
+    let id = (gidx * num_y_workgroups + gidy) * num_z_workgroups + gidz;
+
     var s_u32s: array<u32, 16>;
     for (var i = 0u; i < 16u; i ++) {
-        s_u32s[i] = s[i];
+        s_u32s[i] = s[id * 8u + i];
     }
 
     var k_u32s: array<u32, 24>;
     for (var i = 0u; i < 24u; i ++) {
-        k_u32s[i] = k[i];
+        k_u32s[i] = k[id * 24u + i];
     }
 
     // Compute the hash
@@ -83,5 +92,5 @@ fn test_verify(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     var compressed = compressed_sign_bit == 1u;
 
-    result = ed25519_verify(&s_val, &k_val, &ayr_val, compressed, &p);
+    result[id] = ed25519_verify(&s_val, &k_val, &ayr_val, compressed, &p);
 }

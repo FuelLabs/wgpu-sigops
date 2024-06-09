@@ -4,6 +4,8 @@ pub mod mont;
 pub mod secp256k1_ecdsa;
 #[cfg(test)]
 pub mod secp256r1_ecdsa;
+#[cfg(test)]
+pub mod ed25519_eddsa;
 
 pub fn compute_num_workgroups(
     num_threads: usize,
