@@ -103,7 +103,7 @@ pub async fn do_mont_test(
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
     let source =
-        render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+        render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -153,7 +153,7 @@ pub async fn mont_sqrt_case3mod4() {
 
     for p in &[&p0, &p1, &p2, &p3] {
         for log_limb_size in 11..16 {
-            for _ in 0..10 {
+            for _ in 0..NUM_RUNS_PER_TEST {
                 let num_limbs = calc_num_limbs(log_limb_size, 256);
                 let r = mont::calc_mont_radix(num_limbs, log_limb_size);
 
@@ -197,7 +197,7 @@ pub async fn do_mont_sqrt_case3mod4_test(
     let result_a_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
     let result_b_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source = render_mont_sqrt_case3mod4_test("src/wgsl/", filename, &p, log_limb_size);
+    let source = render_mont_sqrt_case3mod4_test(filename, &p, log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);

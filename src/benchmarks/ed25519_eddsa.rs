@@ -142,7 +142,7 @@ pub async fn do_benchmark(
     let result_buf = create_empty_sb(&device, (num_signatures * num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
 
-    let source = render_ed25519_eddsa_tests("src/wgsl/", "ed25519_eddsa_benchmarks.wgsl", log_limb_size);
+    let source = render_ed25519_eddsa_tests("ed25519_eddsa_benchmarks.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_verify");
 
     let mut command_encoder = create_command_encoder(&device);

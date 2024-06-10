@@ -34,7 +34,7 @@ pub async fn do_sha512_96_test(input_bytes: &[u8], filename: &str, entrypoint: &
         input_u32s.push(value);
     }
     let input_buf = create_sb_with_data(&device, &input_u32s);
-    let source = render_sha512_96_tests("src/wgsl/", filename);
+    let source = render_sha512_96_tests(filename);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let result_buf = create_empty_sb(&device, (64 * std::mem::size_of::<u8>()) as u64);

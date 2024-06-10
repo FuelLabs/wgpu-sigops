@@ -141,7 +141,6 @@ fn sha512_96(
 
         let s0 = xor(xor(right_rotate(wim15, 1u), right_rotate(wim15, 8u)), shr(wim15, 7u));
         let s1 = xor(xor(right_rotate(wim2, 19u), right_rotate(wim2, 61u)), shr(wim2, 6u));
-
         
         let rr = add(add(add(wim16, s0), wim7), s1);
         w[i * 2] = rr[0];

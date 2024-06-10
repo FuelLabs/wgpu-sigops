@@ -104,7 +104,7 @@ pub async fn do_eddsa_test(
     let k_buf = create_sb_with_data(&device, &k_u32s);
     let result_buf = create_empty_sb(&device, (num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
 
-    let source = render_ed25519_eddsa_tests("src/wgsl/", "ed25519_eddsa_tests.wgsl", log_limb_size);
+    let source = render_ed25519_eddsa_tests("ed25519_eddsa_tests.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "test_verify");
 
     let mut command_encoder = create_command_encoder(&device);
@@ -174,7 +174,7 @@ pub async fn is_negative_test() {
     let result_buf = create_empty_sb(&device, a_val_buf.size());
     let result2_buf = create_empty_sb(&device, a_val_buf.size());
 
-    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_utils_tests.wgsl", log_limb_size);
+    let source = render_ed25519_utils_tests("ed25519_utils_tests.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "test_is_negative");
 
     let mut command_encoder = create_command_encoder(&device);
@@ -348,7 +348,6 @@ pub async fn do_reconstruct_ete_point_from_y_invalid_test(
     let is_valid_buf = create_empty_sb(&device, x_sign_buf.size());
 
     let source = render_ed25519_utils_tests(
-        "src/wgsl/",
         "ed25519_reconstruct_ete_from_y_tests.wgsl",
         log_limb_size,
     );
@@ -404,7 +403,6 @@ pub async fn do_reconstruct_ete_point_from_y_test(
     let is_valid_buf = create_empty_sb(&device, x_sign_buf.size());
 
     let source = render_ed25519_utils_tests(
-        "src/wgsl/",
         "ed25519_reconstruct_ete_from_y_tests.wgsl",
         log_limb_size,
     );
@@ -476,7 +474,7 @@ pub async fn do_sqrt_ratio_i_test(u: &BigUint, v: &BigUint, p: &BigUint, log_lim
     let result_buf = create_empty_sb(&device, ur_buf.size());
     let result2_buf = create_empty_sb(&device, ur_buf.size());
 
-    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_utils_tests.wgsl", log_limb_size);
+    let source = render_ed25519_utils_tests("ed25519_utils_tests.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "test_sqrt_ratio_i");
 
     let mut command_encoder = create_command_encoder(&device);
@@ -538,7 +536,7 @@ pub async fn do_pow_p58_test(x: &BigUint, p: &BigUint, log_limb_size: u32) {
     let result_buf = create_empty_sb(&device, xr_buf.size());
     let result2_buf = create_empty_sb(&device, xr_buf.size());
 
-    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_utils_tests.wgsl", log_limb_size);
+    let source = render_ed25519_utils_tests("ed25519_utils_tests.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "test_pow_p58");
 
     let mut command_encoder = create_command_encoder(&device);
@@ -586,7 +584,7 @@ pub async fn do_conditional_assign_test(choice: bool) {
     let result_buf = create_empty_sb(&device, a_val_buf.size());
     let result2_buf = create_empty_sb(&device, a_val_buf.size());
 
-    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_utils_tests.wgsl", log_limb_size);
+    let source = render_ed25519_utils_tests("ed25519_utils_tests.wgsl", log_limb_size);
     let entrypoint = if choice {
         "test_conditional_assign_true"
     } else {
@@ -636,7 +634,7 @@ pub async fn do_conditional_negate_test(choice: bool) {
     let result_buf = create_empty_sb(&device, a_val_buf.size());
     let result2_buf = create_empty_sb(&device, a_val_buf.size());
 
-    let source = render_ed25519_utils_tests("src/wgsl/", "ed25519_utils_tests.wgsl", log_limb_size);
+    let source = render_ed25519_utils_tests("ed25519_utils_tests.wgsl", log_limb_size);
     let entrypoint = if choice {
         "test_conditional_negate_true"
     } else {
@@ -718,7 +716,6 @@ pub async fn do_compressed_y_to_eteprojective_test(
     let is_valid_buf = create_empty_sb(&device, (std::mem::size_of::<u32>()) as u64);
 
     let source = render_ed25519_utils_tests(
-        "src/wgsl/",
         "ed25519_compressed_y_to_eteprojective_tests.wgsl",
         log_limb_size,
     );

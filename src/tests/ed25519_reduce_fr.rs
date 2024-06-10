@@ -39,7 +39,7 @@ pub async fn do_ed25519_reduce_fr_test(input: &BigUint, filename: &str, entrypoi
     let input_buf = create_sb_with_data(&device, &input_u32s);
     let result_buf = create_empty_sb(&device, input_buf.size() * 2);
 
-    let source = render_ed25519_reduce_fr_tests("src/wgsl/", filename);
+    let source = render_ed25519_reduce_fr_tests(filename);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);

@@ -12,16 +12,16 @@ Run the tests:
 
 ```
 cd wgpu_sig_ops &&
-cargo test
+cargo test -- --skip benchmarks
 ```
 
-### Run benchmarks
+## Benchmarks
 
 ```
 cargo test --release multiple_benchmarks -- --nocapture
 ```
 
-#### Results
+### Results
 
 The following benchmarks were run on a 13th Gen Intel(R) Core(TM) i7-13700HX
 machine with an [Nvidia RTX
@@ -106,8 +106,10 @@ unit tests, include:
 - Barrett reduction
 - Square root calculation where the modulus is 3 mod 4
 - Projective curve point addition and doubling
-- Shamir-Strauss multiplication
 - Extended Twisted Edwards curve point addition and doubling
+- Shamir-Strauss multiplication
+- Double-and-add multiplication
+- SHA512
 
 These tests execute the same operations in CPU and in GPU, and compare the
 result to ensure correctness. For instance, for the ECDSA tests, the output of

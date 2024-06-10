@@ -85,7 +85,7 @@ pub async fn do_secp256k1_test(
     let _sig = BigUint::from_bytes_be(sig_bytes);
 
     let (device, queue) = get_device_and_queue().await;
-    let source = render_secp256k1_ecdsa_tests("src/wgsl/", filename, log_limb_size);
+    let source = render_secp256k1_ecdsa_tests(filename, log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let sig_u32s: Vec<u32> = bytemuck::cast_slice(&sig_bytes).to_vec();

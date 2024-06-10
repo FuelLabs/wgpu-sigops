@@ -40,7 +40,6 @@ pub async fn do_test_bytes_be_to_limbs_le(val: &BigUint, p: &BigUint, log_limb_s
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
     let source = render_bytes_to_limbs_test(
-        "src/wgsl/",
         "bytes_be_to_limbs_le_tests.wgsl",
         &p,
         &get_secp256k1_b(),

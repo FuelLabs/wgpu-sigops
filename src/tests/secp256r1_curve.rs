@@ -146,7 +146,7 @@ pub async fn do_add_test(
     let pt_b_buf = create_sb_with_data(&device, &pt_b_limbs);
     let result_buf = create_empty_sb(&device, pt_a_buf.size());
 
-    let source = render_secp256r1_curve_tests("src/wgsl/", filename, log_limb_size);
+    let source = render_secp256r1_curve_tests(filename, log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -211,7 +211,7 @@ pub async fn do_dbl_test(
     let pt_b_buf = create_empty_sb(&device, pt_a_buf.size());
     let result_buf = create_empty_sb(&device, pt_a_buf.size());
 
-    let source = render_secp256r1_curve_tests("src/wgsl/", filename, log_limb_size);
+    let source = render_secp256r1_curve_tests(filename, log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -273,7 +273,7 @@ pub async fn do_recover_affine_ys_test(
     let result_0_buf = create_empty_sb(&device, xr_buf.size());
     let result_1_buf = create_empty_sb(&device, xr_buf.size());
 
-    let source = render_secp256r1_curve_tests("src/wgsl/", filename, log_limb_size);
+    let source = render_secp256r1_curve_tests(filename, log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);

@@ -24,7 +24,7 @@ pub async fn secp256k1_ecrecover_multiple_benchmarks() {
     let check = false;
     let log_limb_size = 13u32;
     let start = 10;
-    let end = 18;
+    let end = 12;
 
     let mut data = Vec::with_capacity(end - start);
     for i in start..end {
@@ -126,7 +126,7 @@ pub async fn do_benchmark(
     let params = &[num_x_workgroups as u32, num_y_workgroups as u32, num_z_workgroups as u32];
 
     let (device, queue) = get_device_and_queue().await;
-    let source = render_secp256k1_ecdsa_tests("src/wgsl/", "secp256k1_ecdsa_benchmarks.wgsl", log_limb_size);
+    let source = render_secp256k1_ecdsa_tests("secp256k1_ecdsa_benchmarks.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_secp256k1_recover");
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);

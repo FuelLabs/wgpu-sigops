@@ -105,7 +105,7 @@ pub async fn do_mont_benchmark(
     let cost_buf = create_sb_with_data(&device, &[cost]);
 
     let source =
-        render_bigint_ff_mont_tests("src/wgsl/", filename, &p, &get_secp256k1_b(), log_limb_size);
+        render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
