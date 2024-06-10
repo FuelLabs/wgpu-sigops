@@ -15,6 +15,47 @@ cd wgpu_sig_ops &&
 cargo test -- --skip benchmarks
 ```
 
+## Overview
+
+This repository contains GPU shaders for the following cryptographic operations:
+
+- secp256k1 ECDSA signature recovery
+- secp256r1 ECDSA signature recovery
+- curve25519 EdDSA signature verification
+
+These shaders are written to mirror the same underlying algorithms and code that Fuel nodes use.
+
+These GPU shaders are written in the [WebGPU Shader
+Language](https://www.w3.org/TR/WGSL/), and are executed by the
+[wgpu](https://github.com/gfx-rs/wgpu) API which works with Rust.
+
+The constituent algorithms for these operations, which also come with their own
+unit tests, include:
+
+- Big integer addition, subtraction, multiplication, and halving
+- Bytestring-to-big-integer conversion
+- Finite field addition, subtraction, inversion, and multiplication
+- Multiplication of finite field elements in Montgomery form
+- Barrett reduction
+- Square root calculation where the modulus is 3 mod 4
+- Projective curve point addition and doubling
+- Extended Twisted Edwards curve point addition and doubling
+- Shamir-Strauss multiplication
+- Double-and-add multiplication
+- SHA512
+
+These tests execute the same operations in CPU and in GPU, and compare the
+result to ensure correctness. For instance, for the ECDSA tests, the output of
+the shader is checked against the output of the relevant ECDSA signature
+recovery function from the
+[`fuel-crypto`](https://crates.io/crates/fuel-crypto) library.
+
+Of particular note is that the curve25519 EdDSA signature verification shader follows the
+[`ed25519-dalek`](https://crates.io/crates/ed25519-dalek) implementation of
+EdDSA. This is important because [not all EdDSA implementations are the
+same](https://hdevalence.ca/blog/2020-10-04-its-25519am), and nodes must run
+the same implementation in order to maintain consensus.
+
 ## Benchmarks
 
 ```
@@ -84,40 +125,7 @@ secp256r1 signature verification benchmarks:
 | 65536              | 42038              | 1459               |
 | 131072             | 65421              | 2824               |
 
-## Overview
-
-This repository contains GPU shaders for the following cryptographic operations:
-
-- secp256k1 ECDSA signature recovery
-- secp256r1 ECDSA signature recovery
-- curve25519 EdDSA signature verification
-
-These GPU shaders are written in the [WebGPU Shader
-Language](https://www.w3.org/TR/WGSL/), and are executed by the
-[wgpu](https://github.com/gfx-rs/wgpu) API which works with Rust.
-
-The constituent algorithms for these operations, which also come with their own
-unit tests, include:
-
-- Big integer addition, subtraction, multiplication, and halving
-- Bytestring-to-big-integer conversion
-- Finite field addition, subtraction, inversion, and multiplication
-- Multiplication of finite field elements in Montgomery form
-- Barrett reduction
-- Square root calculation where the modulus is 3 mod 4
-- Projective curve point addition and doubling
-- Extended Twisted Edwards curve point addition and doubling
-- Shamir-Strauss multiplication
-- Double-and-add multiplication
-- SHA512
-
-These tests execute the same operations in CPU and in GPU, and compare the
-result to ensure correctness. For instance, for the ECDSA tests, the output of
-the shader is checked against the output of the relevant ECDSA signature
-recovery function from the
-[`fuel-crypto`](https://crates.io/crates/fuel-crypto) library.
-
-## Montgomery multiplication benchmarks
+### Montgomery multiplication benchmarks
 
 These benchmarks can help select the best choice of limb size for different platforms.
 
