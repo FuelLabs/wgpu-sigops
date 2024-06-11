@@ -24,7 +24,7 @@ pub async fn secp256k1_ecrecover_multiple_benchmarks() {
     let check = false;
     let log_limb_size = 13u32;
     let start = 10;
-    let end = 12;
+    let end = 18;
 
     let mut data = Vec::with_capacity(end - start);
     for i in start..end {

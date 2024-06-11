@@ -118,3 +118,8 @@ fn reconstruct_ete_from_y(
 
     return ReconstructETEFromYResult(r.was_nonzero_square, ETEPoint(xr, *yr, tr, zr));
 }
+
+// TODO:
+// base field inversion: x^-1 = x^(p-2) (mod p)
+// limbs_to_bytes
+// ete_to_compressed(): https://docs.rs/curve25519-dalek/latest/src/curve25519_dalek/edwards.rs.html#565-574
