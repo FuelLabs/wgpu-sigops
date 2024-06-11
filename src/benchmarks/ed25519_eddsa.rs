@@ -8,7 +8,6 @@ use crate::shader::render_ed25519_eddsa_tests;
 use ark_ec::CurveGroup;
 use ark_ed25519::{EdwardsProjective as Projective, Fq};
 use ark_ff::PrimeField;
-use byteorder::{BigEndian, ByteOrder};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use crate::curve_algos::ed25519_eddsa::{
     ark_ecverify, curve25519_ecverify,
@@ -16,7 +15,6 @@ use crate::curve_algos::ed25519_eddsa::{
 use fuel_crypto::Message;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::bigint;
-//use multiprecision::{bigint, mont};
 use rand::RngCore;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -62,9 +60,6 @@ pub async fn do_benchmark(
 ) -> (u32, u32) {
     let p = crate::moduli::ed25519_fq_modulus_biguint();
     let num_limbs = calc_num_limbs(log_limb_size, 256);
-    //let r = mont::calc_mont_radix(num_limbs, log_limb_size);
-    //let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
-    //let rinv = res.0;
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     let workgroup_size = 256;
@@ -105,40 +100,30 @@ pub async fn do_benchmark(
     let sw = Stopwatch::start_new();
 
     // Set up data for the input buffers
-    let mut all_s_bytes = Vec::with_capacity(num_signatures * 32 * 8);
-    let mut all_k_u32s = Vec::with_capacity(num_signatures * 96);
+    let mut all_sig_bytes = Vec::with_capacity(num_signatures * 64 * 8);
+    let mut all_pk_bytes = Vec::with_capacity(num_signatures * 32 * 8);
+    let mut all_msg_bytes: Vec<u8> = Vec::with_capacity(num_signatures * 32 * 8);
 
     for i in 0..num_signatures {
-        let s_bytes = signatures[i].s_bytes();
-        let r_bytes = signatures[i].r_bytes();
-        let a_bytes = verifying_keys[i].as_bytes();
-        let m_bytes = messages[i].as_slice();
+        let sig_bytes_be = signatures[i].to_bytes();
+        let pk_bytes_be = verifying_keys[i].to_bytes();
+        let msg_bytes = messages[i].as_slice();
 
-        let mut s_bytes_le = s_bytes.as_slice().to_vec();
-        s_bytes_le.reverse();
-
-        let mut preimage_bytes = Vec::<u8>::with_capacity(96);
-        preimage_bytes.extend(r_bytes);
-        preimage_bytes.extend(a_bytes);
-        preimage_bytes.extend(m_bytes);
-
-        let mut k_u32s = Vec::with_capacity(preimage_bytes.len() / 4);
-        for chunk in preimage_bytes.chunks(4) {
-            let value = BigEndian::read_u32(chunk);
-            k_u32s.push(value);
-        }
-
-        all_k_u32s.extend(k_u32s.clone());
-        all_s_bytes.extend(s_bytes_le.clone());
+        all_sig_bytes.extend(sig_bytes_be);
+        all_pk_bytes.extend(pk_bytes_be);
+        all_msg_bytes.extend(msg_bytes);
     }
 
-    let all_s_u32s: Vec<u32> = bytemuck::cast_slice(&all_s_bytes).to_vec();
+    let all_sig_u32s: Vec<u32> = bytemuck::cast_slice(&all_sig_bytes).to_vec();
+    let all_pk_u32s: Vec<u32> = bytemuck::cast_slice(&all_pk_bytes).to_vec();
+    let all_msg_u32s: Vec<u32> = bytemuck::cast_slice(&all_msg_bytes).to_vec();
 
     let (device, queue) = get_device_and_queue().await;
     let params = &[num_x_workgroups as u32, num_y_workgroups as u32, num_z_workgroups as u32];
 
-    let s_buf = create_sb_with_data(&device, &all_s_u32s);
-    let k_buf = create_sb_with_data(&device, &all_k_u32s);
+    let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
+    let pk_buf = create_sb_with_data(&device, &all_pk_u32s);
+    let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
     let result_buf = create_empty_sb(&device, (num_signatures * num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
 
@@ -151,7 +136,7 @@ pub async fn do_benchmark(
         &device,
         &compute_pipeline,
         0,
-        &[&s_buf, &k_buf, &result_buf, &params_buf],
+        &[&sig_buf, &pk_buf, &msg_buf, &result_buf, &params_buf],
     );
 
     execute_pipeline(
@@ -169,6 +154,9 @@ pub async fn do_benchmark(
 
     let gpu_ms = sw.elapsed_ms();
 
+    let r = multiprecision::mont::calc_mont_radix(num_limbs, log_limb_size);
+    let res = multiprecision::mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
         // NOTE: There is actually no need to convert out of Montgomery form since we are using ETE
@@ -176,8 +164,8 @@ pub async fn do_benchmark(
         // Since 
         //     x = x/z,    y = y/z,   xy = t/z
         //     xr = xr/zr, y = yr/zr, xy = tr/zr
-        //let result = &result_r * &rinv % &p;
-        let result = &result_r % &p;
+        let result = &result_r * &rinv % &p;
+        //let result = &result_r % &p;
 
         Fq::from_be_bytes_mod_order(&result.to_bytes_be())
     };

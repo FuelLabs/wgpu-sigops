@@ -12,6 +12,14 @@ fn u32s_to_bytes_be(
     return bytes_be;
 }
 
+fn u32_be_to_le(val: u32) -> u32 {
+    let a = val >> 24u;
+    let b = (val >> 16u) & 0xff;
+    let c = (val >> 8u) & 0xff;
+    let d = val & 0xff;
+    return a + (b << 8u) + (c << 16u) + (d << 24u);
+}
+
 fn bytes_be_to_limbs_le(
     bytes: ptr<function, array<u32, 32>>
 ) -> BigInt {
