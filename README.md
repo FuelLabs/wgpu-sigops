@@ -132,3 +132,12 @@ These benchmarks can help select the best choice of limb size for different plat
 ```bash
 cargo test mont_mul_benchmarks -- --nocapture
 ```
+
+## Things to do
+
+- Modify the secp256k1 and secp256r1 signature recovery shaders write the
+  recovered public key, in affine form, to the result buffer as bytes
+- Modify the ed25519 signature verification shader to accept the input bytes
+  without having to change their endianness.
+- Modify the ed25519 signature verification shader to output a 1 or 0 depending
+  on whether the signature is valid or not.

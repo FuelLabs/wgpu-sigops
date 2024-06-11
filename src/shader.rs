@@ -145,6 +145,34 @@ pub fn do_render(
     template.render(context).unwrap()
 }
 
+pub fn render_buffer_test(
+    template_file: &str,
+) -> String {
+    let tests_path: &str = "src/wgsl/tests";
+
+    let mut env = Environment::new();
+
+    let source = read_from_file(tests_path, template_file);
+    env.add_template(template_file, &source).unwrap();
+
+    let template = env.get_template(template_file).unwrap();
+    let context = context! {};
+    template.render(context).unwrap()
+}
+
+use std::borrow::Cow;
+
+pub fn add_source_to_env(
+    template_path: &str,
+    template_file: &str,
+    env: &mut Environment,
+) {
+    let source = read_from_file(template_path, &template_file);
+    let tf = Cow::from(template_file);
+    let s = Cow::from(source);
+    env.add_template_owned(tf.into_owned(), s.into_owned()).unwrap();
+}
+
 pub fn render_bytes_to_limbs_test(
     template_file: &str,
     p: &BigUint,
@@ -156,18 +184,10 @@ pub fn render_bytes_to_limbs_test(
 
     let mut env = Environment::new();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
-        .unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(p, p, b, log_limb_size, &template)
@@ -183,20 +203,11 @@ pub fn render_bigint_ff_mont_tests(
     let tests_path: &str = "src/wgsl/tests";
     let mut env = Environment::new();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(p, p, b, log_limb_size, &template)
@@ -214,26 +225,13 @@ pub fn render_mont_sqrt_case3mod4_test(
 
     let b = get_secp256k1_b();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256k1_curve.wgsl");
-    env.add_template("secp256k1_curve.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp_constants.wgsl");
-    env.add_template("secp_constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256k1_curve.wgsl", &mut env);
+    add_source_to_env(template_path, "secp_constants.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &p, &b, log_limb_size, &template)
@@ -253,26 +251,13 @@ pub fn render_secp256k1_curve_tests(
 
     let b = get_secp256k1_b();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256k1_curve.wgsl");
-    env.add_template("secp256k1_curve.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp_constants.wgsl");
-    env.add_template("secp_constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256k1_curve.wgsl", &mut env);
+    add_source_to_env(template_path, "secp_constants.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
@@ -291,40 +276,17 @@ pub fn render_secp256k1_ecdsa_tests(
     let p = crate::moduli::secp256k1_fq_modulus_biguint();
     let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256k1_curve.wgsl");
-    env.add_template("secp256k1_curve.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "signature.wgsl");
-    env.add_template("signature.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256k1_ecdsa.wgsl");
-    env.add_template("secp256k1_ecdsa.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp_constants.wgsl");
-    env.add_template("secp_constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256k1_curve_generators.wgsl");
-    env.add_template("secp256k1_curve_generators.wgsl", &source)
-        .unwrap();
-
-    let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
-        .unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256k1_curve.wgsl", &mut env);
+    add_source_to_env(template_path, "signature.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256k1_ecdsa.wgsl", &mut env);
+    add_source_to_env(template_path, "secp_constants.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256k1_curve_generators.wgsl", &mut env);
+    add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
@@ -343,26 +305,13 @@ pub fn render_secp256r1_curve_tests(
     let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
     let b = get_secp256r1_b();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256r1_curve.wgsl");
-    env.add_template("secp256r1_curve.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp_constants.wgsl");
-    env.add_template("secp_constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256r1_curve.wgsl", &mut env);
+    add_source_to_env(template_path, "secp_constants.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
@@ -381,40 +330,17 @@ pub fn render_secp256r1_ecdsa_tests(
     let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
     let b = get_secp256r1_b();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256r1_curve.wgsl");
-    env.add_template("secp256r1_curve.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "signature.wgsl");
-    env.add_template("signature.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256r1_ecdsa.wgsl");
-    env.add_template("secp256r1_ecdsa.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp_constants.wgsl");
-    env.add_template("secp_constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "secp256r1_curve_generators.wgsl");
-    env.add_template("secp256r1_curve_generators.wgsl", &source)
-        .unwrap();
-
-    let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
-        .unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256r1_curve.wgsl", &mut env);
+    add_source_to_env(template_path, "signature.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256r1_ecdsa.wgsl", &mut env);
+    add_source_to_env(template_path, "secp_constants.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(template_path, "secp256r1_curve_generators.wgsl", &mut env);
+    add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
@@ -433,26 +359,13 @@ pub fn render_ed25519_curve_tests(
     let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
     let d2 = get_ed25519_d2();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_curve.wgsl");
-    env.add_template("ed25519_curve.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_constants.wgsl");
-    env.add_template("ed25519_constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_curve.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_constants.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
@@ -581,18 +494,12 @@ pub fn render_ed25519_reduce_fr_tests(template_file: &str) -> String {
 
     let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
 
-    let source = read_from_file(template_path, "ed25519_reduce_fr.wgsl");
-    env.add_template("ed25519_reduce_fr.wgsl", &source).unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "ed25519_reduce_fr.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render_ed25519_reduce_fr_tests(&scalar_p, &template)
 }
-
-//pub fn gen_ed25519_reduce_fq_constants(scalar_p: &BigUint) -> (String, String, String) {
-//}
 
 pub fn gen_ed25519_reduce_fr_constants(scalar_p: &BigUint) -> (String, String) {
     let r = BigUint::parse_bytes(
@@ -651,33 +558,16 @@ pub fn render_ed25519_utils_tests(
     let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
     let d2 = get_ed25519_d2();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
+add_source_to_env(template_path, "bigint.wgsl", &mut env);
 
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_curve.wgsl");
-    env.add_template("ed25519_curve.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_constants.wgsl");
-    env.add_template("ed25519_constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_utils.wgsl");
-    env.add_template("ed25519_utils.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
-        .unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_curve.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_constants.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_utils.wgsl", &mut env);
+    add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
@@ -696,42 +586,18 @@ pub fn render_ed25519_eddsa_tests(
     let scalar_p = crate::moduli::ed25519_fr_modulus_biguint();
     let d2 = get_ed25519_d2();
 
-    let source = read_from_file(template_path, "bigint.wgsl");
-    env.add_template("bigint.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ff.wgsl");
-    env.add_template("ff.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "mont.wgsl");
-    env.add_template("mont.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_curve.wgsl");
-    env.add_template("ed25519_curve.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "constants.wgsl");
-    env.add_template("constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_constants.wgsl");
-    env.add_template("ed25519_constants.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_utils.wgsl");
-    env.add_template("ed25519_utils.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_eddsa.wgsl");
-    env.add_template("ed25519_eddsa.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "bytes_be_to_limbs_le.wgsl");
-    env.add_template("bytes_be_to_limbs_le.wgsl", &source)
-        .unwrap();
-
-    let source = read_from_file(template_path, "sha512.wgsl");
-    env.add_template("sha512.wgsl", &source).unwrap();
-
-    let source = read_from_file(template_path, "ed25519_reduce_fr.wgsl");
-    env.add_template("ed25519_reduce_fr.wgsl", &source).unwrap();
-
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "ff.wgsl", &mut env);
+    add_source_to_env(template_path, "mont.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_curve.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_constants.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_utils.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_eddsa.wgsl", &mut env);
+    add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
+    add_source_to_env(template_path, "sha512.wgsl", &mut env);
+    add_source_to_env(template_path, "ed25519_reduce_fr.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
@@ -743,13 +609,10 @@ pub fn render_sha512_96_tests(template_file: &str) -> String {
 
     let mut env = Environment::new();
 
-    let source = read_from_file(template_path, "sha512.wgsl");
-    env.add_template("sha512.wgsl", &source).unwrap();
+    add_source_to_env(template_path, "sha512.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
 
-    let source = read_from_file(tests_path, template_file);
-    env.add_template(template_file, &source).unwrap();
     let context = context! {};
-
     let template = env.get_template(template_file).unwrap();
     template.render(context).unwrap()
 }

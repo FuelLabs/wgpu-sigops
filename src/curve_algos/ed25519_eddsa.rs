@@ -50,7 +50,7 @@ pub fn curve25519_ecverify(
     verifying_key: &VerifyingKey,
     signature: &Signature,
     message: &[u8],
-    ) -> Vec<u8> {
+) -> Vec<u8> {
     let s_bytes = signature.s_bytes();
     let a_bytes = verifying_key.as_bytes();
 

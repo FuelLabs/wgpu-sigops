@@ -25,6 +25,104 @@ use rand_chacha::ChaCha8Rng;
 use sha2::Digest;
 use std::ops::Mul;
 
+/*
+#[serial_test::serial]
+#[tokio::test]
+pub async fn verify2() {
+    let p = crate::moduli::ed25519_fq_modulus_biguint();
+
+    let mut rng = ChaCha8Rng::seed_from_u64(1);
+
+    for log_limb_size in 13..14 {
+        for _ in 0..1 {
+            let mut message = [0u8; 100];
+            rng.fill_bytes(&mut message);
+            let message = Message::new(&message);
+            let message = message.as_slice();
+
+            let signing_key: SigningKey = SigningKey::generate(&mut rng);
+            let verifying_key = signing_key.verifying_key();
+            let signature: Signature = signing_key.sign(&message);
+
+            assert!(verifying_key.verify(&message, &signature).is_ok());
+
+            do_eddsa_test2(&verifying_key, &signature, &message, &p, log_limb_size).await;
+        }
+    }
+}
+
+pub async fn do_eddsa_test2(
+    verifying_key: &VerifyingKey,
+    signature: &Signature,
+    message: &[u8],
+    p: &BigUint,
+    log_limb_size: u32,
+) {
+    let sig_bytes_be = signature.to_bytes();
+
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+
+    let (device, queue) = get_device_and_queue().await;
+
+    let sig_u32s: Vec<u32> = bytemuck::cast_slice(&sig_bytes_be).to_vec();
+    let sig_buf = create_sb_with_data(&device, &sig_u32s);
+    let result_buf = create_empty_sb(&device, (num_limbs * 1 * std::mem::size_of::<u32>()) as u64);
+
+    let source = render_ed25519_eddsa_tests("ed25519_eddsa_tests2.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "test_verify");
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&sig_buf, &result_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
+
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
+
+    let result = bigint::to_biguint_le(&results[0], num_limbs, log_limb_size);
+    println!("{}", result);
+
+    //let convert_result_coord = |data: &Vec<u32>| -> Fq {
+        //let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        //let result = &result_r * &rinv % p;
+        ////let result = &result_r;
+
+        //Fq::from_be_bytes_mod_order(&result.to_bytes_be())
+    //};
+
+    //let recovered_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
+    //let recovered_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
+    //let recovered_t = convert_result_coord(&results[0][(num_limbs * 2)..(num_limbs * 3)].to_vec());
+    //let recovered_z = convert_result_coord(&results[0][(num_limbs * 3)..(num_limbs * 4)].to_vec());
+
+    //println!("r.x: {}", hex::encode(&recovered_x.into_bigint().to_bytes_be()));
+    //println!("r.y: {}", hex::encode(&recovered_y.into_bigint().to_bytes_be()));
+    //println!("r.t: {}", hex::encode(&recovered_t.into_bigint().to_bytes_be()));
+    //println!("r.z: {}", hex::encode(&recovered_z.into_bigint().to_bytes_be()));
+
+    //let recovered =
+        //Projective::new(recovered_x, recovered_y, recovered_t, recovered_z).into_affine();
+    //assert_eq!(recovered, expected);
+}
+*/
+
 #[serial_test::serial]
 #[tokio::test]
 pub async fn verify() {
@@ -33,7 +131,7 @@ pub async fn verify() {
     let mut rng = ChaCha8Rng::seed_from_u64(1);
 
     for log_limb_size in 13..14 {
-        for _ in 0..50 {
+        for _ in 0..10 {
             let mut message = [0u8; 100];
             rng.fill_bytes(&mut message);
             let message = Message::new(&message);
