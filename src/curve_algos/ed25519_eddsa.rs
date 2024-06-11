@@ -18,6 +18,12 @@ pub fn ark_ecverify(
     signature: &Signature,
     message: &[u8],
 ) -> EdwardsAffine {
+    // signature contains scalar s and the y-coordinate of the point R
+    // verifying key = point A
+    // k = hash(r, a, msg)
+    // return sG - kA
+    // 
+    // sG - kA should equal R.
     let s_bytes = signature.s_bytes();
     let a_bytes = verifying_key.as_bytes();
 
@@ -198,7 +204,6 @@ pub mod tests {
         let mut rng = ChaCha8Rng::seed_from_u64(1);
 
         for _i in 0..50 {
-            //println!("i: {i}");
             let mut message = [0u8; 100];
             rng.fill_bytes(&mut message);
 
@@ -215,6 +220,9 @@ pub mod tests {
             ark_recovered_bytes.reverse();
 
             assert_eq!(ark_recovered_bytes, cd_recovered_bytes);
+
+            let sig_r_bytes = signature.r_bytes();
+            assert_eq!(*sig_r_bytes, *cd_recovered_bytes);
         }
     }
 }
