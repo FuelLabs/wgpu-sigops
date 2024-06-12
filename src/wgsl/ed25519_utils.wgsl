@@ -120,6 +120,5 @@ fn reconstruct_ete_from_y(
 }
 
 // TODO:
-// base field inversion: x^-1 = x^(p-2) (mod p)
-// limbs_to_bytes
+// limbs_to_u32s
 // ete_to_compressed(): https://docs.rs/curve25519-dalek/latest/src/curve25519_dalek/edwards.rs.html#565-574

@@ -72,7 +72,10 @@ fn secp256k1_ecrecover(
     var g = get_secp256k1_generator();
     var u1g = projective_mul(&g, &u1, p);
     var u2r = projective_mul(&recovered_r, &u2, p);
-    return projective_add_2007_bl_unsafe(&u1g, &u2r, p);
+    var result_proj = projective_add_2007_bl_unsafe(&u1g, &u2r, p);
+
+    // Return the point in affine form
+    return projective_to_affine_non_mont(&result_proj, p, p_wide, r, rinv, mu_fp);
 
     // At a high enough thread count, using the projective_strauss_shamir_mul()
     // function will make the shader silently fail and the result buffer will

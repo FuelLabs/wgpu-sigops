@@ -48,3 +48,18 @@ fn test_projective_dbl_2007_bl_unsafe(@builtin(global_invocation_id) global_id: 
     var result_pt = projective_dbl_2007_bl_unsafe(&a_pt, &p_bigint);
     result = result_pt;
 }
+
+@compute
+@workgroup_size(1)
+fn test_projective_to_affine(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p_bigint = get_p();
+    var p_wide = get_p_wide();
+    var r = get_r();
+    var rinv = get_rinv();
+    var mu_fp = get_mu_fp();
+
+    var a_pt = a;
+    var b_pt = b;
+    var result_pt = projective_to_affine_non_mont(&a_pt, &p_bigint, &p_wide, &r, &rinv, &mu_fp);
+    result = result_pt;
+}

@@ -86,9 +86,6 @@ pub async fn ff_inverse() {
     let p1 = moduli::secp256k1_fr_modulus_biguint();
     let p2 = moduli::secp256r1_fq_modulus_biguint();
     let p3 = moduli::secp256r1_fr_modulus_biguint();
-
-    // Note: field inversion for the ed25519 base field should be achieved via the identity
-    // x^-1 = x^(p-2) (mod p) instead
     let p4 = moduli::ed25519_fq_modulus_biguint();
     let p5 = moduli::ed25519_fr_modulus_biguint();
 

@@ -47,9 +47,13 @@ fn ff_sub(
     }
 }
 
-// From "Efficient Software-Implementation of Finite Fields with Applications
-// to Cryptography" by Guajardo, et al, Algorithm 16
-// https://www.sandeep.de/my/papers/2006_ActaApplMath_EfficientSoftFiniteF.pdf
+/*
+  From "Efficient Software-Implementation of Finite Fields with Applications
+  to Cryptography" by Guajardo, et al, Algorithm 16
+  https://www.sandeep.de/my/papers/2006_ActaApplMath_EfficientSoftFiniteF.pdf
+
+  Note that x must not be in Montgomery form.
+*/
 fn ff_inverse(
     x: ptr<function, BigInt>,
     p: ptr<function, BigInt>,
