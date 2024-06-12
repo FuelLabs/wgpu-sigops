@@ -6,6 +6,7 @@
 {% include "secp256r1_ecdsa.wgsl" %}
 {% include "constants.wgsl" %}
 {% include "secp_constants.wgsl" %}
+{% include "secp_curve_utils.wgsl" %}
 {% include "secp256r1_curve_generators.wgsl" %}
 {% include "bytes_be_to_limbs_le.wgsl" %}
 

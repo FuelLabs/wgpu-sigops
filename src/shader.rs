@@ -340,7 +340,7 @@ pub fn render_secp256r1_ecdsa_tests(
     add_source_to_env(template_path, "signature.wgsl", &mut env);
     add_source_to_env(template_path, "secp256r1_ecdsa.wgsl", &mut env);
     add_source_to_env(template_path, "secp_constants.wgsl", &mut env);
-    //add_source_to_env(template_path, "secp_curve_utils.wgsl", &mut env);
+    add_source_to_env(template_path, "secp_curve_utils.wgsl", &mut env);
     add_source_to_env(template_path, "constants.wgsl", &mut env);
     add_source_to_env(template_path, "secp256r1_curve_generators.wgsl", &mut env);
     add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);

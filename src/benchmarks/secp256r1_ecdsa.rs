@@ -5,15 +5,13 @@ use crate::gpu::{
 };
 use crate::benchmarks::compute_num_workgroups;
 use crate::shader::render_secp256r1_ecdsa_tests;
-use crate::tests::secp256r1_curve::projective_to_affine_func;
-use ark_ec::AffineRepr;
 use ark_ff::{BigInteger, PrimeField};
 use ark_secp256r1::{Affine, Fq};
 use fuel_crypto::secp256r1::p256::{recover, sign_prehashed};
 use fuel_crypto::Message;
 use p256::ecdsa::SigningKey;
 use multiprecision::utils::calc_num_limbs;
-use multiprecision::{bigint, mont};
+use multiprecision::bigint;
 use num_bigint::{BigUint, RandomBits};
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
@@ -60,9 +58,6 @@ pub async fn do_benchmark(
 ) -> (u32, u32) {
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
-    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
-    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
-    let rinv = res.0;
     let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
@@ -159,9 +154,7 @@ pub async fn do_benchmark(
 
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
-
-        let result = &result * &rinv % &p;
-
+        let result = &result % &p;
         Fq::from_be_bytes_mod_order(&result.to_bytes_be())
     };
 
@@ -177,18 +170,9 @@ pub async fn do_benchmark(
                 (i * num_limbs * 3 + num_limbs * 2)..(i * num_limbs * 3 + num_limbs * 3)
             ].to_vec());
 
-            //println!("{}", i);
-            //println!("result_x: {}", result_x);
-            //println!("result_y: {}", result_y);
-            //println!("result_z: {}", result_z);
-
-            let result_affine = projective_to_affine_func(result_x, result_y, result_z);
-
-            if result_affine.is_zero() {
-                println!("i: {}", i);
-            }
-
-            assert_eq!(result_affine, expected_pks[i]);
+            assert_eq!(result_x, expected_pks[i].x);
+            assert_eq!(result_y, expected_pks[i].y);
+            assert_eq!(result_z, Fq::from(1u32));
         }
     }
 
