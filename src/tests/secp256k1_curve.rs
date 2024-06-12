@@ -33,27 +33,30 @@ pub fn projective_to_affine_func(x: Fq, y: Fq, z: Fq) -> Affine {
 pub async fn projective_to_affine() {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     let g = Affine::generator();
-    let log_limb_size = 13;
 
-    let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
-    let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
-    let r: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
-    let r = Fr::from_be_bytes_mod_order(&r.to_bytes_be());
-    let a: Affine = g.mul(s).into_affine();
-    let b: Affine = g.mul(r).into_affine();
-    let a_proj = curve::affine_to_projectivexyz(&a);
-    let b_proj = curve::affine_to_projectivexyz(&b);
+    for log_limb_size in 11..15 {
+        for _ in 0..NUM_RUNS_PER_TEST {
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+            let r: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let r = Fr::from_be_bytes_mod_order(&r.to_bytes_be());
+            let a: Affine = g.mul(s).into_affine();
+            let b: Affine = g.mul(r).into_affine();
+            let a_proj = curve::affine_to_projectivexyz(&a);
+            let b_proj = curve::affine_to_projectivexyz(&b);
 
-    let sum = curve::projective_add_2007_bl_unsafe(&a_proj, &b_proj);
+            let sum = curve::projective_add_2007_bl_unsafe(&a_proj, &b_proj);
 
-    do_projective_to_affine_test(
-        &sum,
-        log_limb_size,
-        projective_to_affine_func,
-        "secp256k1_curve_tests.wgsl",
-        "test_projective_to_affine",
-    )
-    .await;
+            do_projective_to_affine_test(
+                &sum,
+                log_limb_size,
+                projective_to_affine_func,
+                "secp256k1_curve_tests.wgsl",
+                "test_projective_to_affine",
+            )
+            .await;
+        }
+    }
 }
 
 #[serial_test::serial]
