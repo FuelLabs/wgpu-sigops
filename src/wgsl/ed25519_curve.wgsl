@@ -5,6 +5,12 @@ struct ETEPoint {
     z: BigInt
 }
 
+struct ETEAffinePoint {
+    x: BigInt,
+    y: BigInt,
+}
+
+/// https://www.hyperelliptic.org/EFD/g1p/auto-twisted-extended-1.html#addition-add-2008-hwcd-3
 fn ete_add_2008_hwcd_3(
     pt_0: ptr<function, ETEPoint>,
     pt_1: ptr<function, ETEPoint>,
@@ -43,6 +49,7 @@ fn ete_add_2008_hwcd_3(
     return ETEPoint(x3, y3, t3, z3);
 }
 
+/// https://www.hyperelliptic.org/EFD/g1p/auto-twisted-extended-1.html#doubling-dbl-2008-hwcd
 fn ete_dbl_2008_hwcd(
     pt_0: ptr<function, ETEPoint>,
     p: ptr<function, BigInt>
@@ -171,4 +178,27 @@ fn ete_strauss_shamir_mul(
     }
 
     return result;
+}
+
+fn ete_to_affine_non_mont(
+    a: ptr<function, ETEPoint>,
+    p: ptr<function, BigInt>,
+    p_wide: ptr<function, BigIntWide>,
+    rinv: ptr<function, BigInt>,
+    mu_fp: ptr<function, BigInt>,
+) -> ETEAffinePoint {
+    var xr = (*a).x;
+    var yr = (*a).y;
+    var zr = (*a).z;
+
+    var x = ff_mul(&xr, rinv, p, p_wide, mu_fp);
+    var y = ff_mul(&yr, rinv, p, p_wide, mu_fp);
+    var z = ff_mul(&zr, rinv, p, p_wide, mu_fp);
+
+    var z_inv = ff_inverse(&z, p);
+
+    var affine_x = ff_mul(&x, &z_inv, p, p_wide, mu_fp);
+    var affine_y = ff_mul(&y, &z_inv, p, p_wide, mu_fp);
+
+    return ETEAffinePoint(affine_x, affine_y);
 }

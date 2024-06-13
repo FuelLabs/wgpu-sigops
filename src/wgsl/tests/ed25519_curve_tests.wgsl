@@ -12,19 +12,40 @@
 @compute
 @workgroup_size(1)
 fn test_ete_add_2008_hwcd_3(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    var p_bigint = get_p();
+    var p = get_p();
     var a_pt = a;
     var b_pt = b;
-    var result_pt = ete_add_2008_hwcd_3(&a_pt, &b_pt, &p_bigint);
+    var result_pt = ete_add_2008_hwcd_3(&a_pt, &b_pt, &p);
     result = result_pt;
 }
 
 @compute
 @workgroup_size(1)
 fn test_ete_dbl_2008_hwcd(@builtin(global_invocation_id) global_id: vec3<u32>) {
-    var p_bigint = get_p();
+    var p = get_p();
     var a_pt = a;
     var b_pt = b;
-    var result_pt = ete_dbl_2008_hwcd(&a_pt, &p_bigint);
+    var result_pt = ete_dbl_2008_hwcd(&a_pt, &p);
     result = result_pt;
+}
+
+@compute
+@workgroup_size(1)
+fn test_ete_to_affine(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p = get_p();
+    var rinv = get_rinv();
+    var p_wide = get_p_wide();
+    var mu_fp = get_mu_fp();
+
+    var a_pt = a;
+    var b_pt = b;
+    var result_pt = ete_to_affine_non_mont(&a_pt, &p, &p_wide, &rinv, &mu_fp);
+
+    var x = result_pt.x;    
+    var y = result_pt.y;    
+    var t = ff_mul(&x, &y, &p, &p_wide, &mu_fp);
+    var z: BigInt;
+    z.limbs[0] = 1u;
+
+    result = ETEPoint(x, y, t, z);
 }

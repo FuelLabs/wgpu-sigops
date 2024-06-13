@@ -35,4 +35,11 @@ fn ed25519_verify(
     );
 
     return ete_strauss_shamir_mul(&g, &neg_a_pt, s, k, p);
+
+    /*
+    // This is about 2x slower than ete_strauss_shamir_mul:
+    var gs = ete_mul(&g, s, p);
+    var neg_a_pt_k = ete_mul(&neg_a_pt, k, p);
+    return ete_add_2008_hwcd_3(&gs, &neg_a_pt_k, p);
+    */
 }
