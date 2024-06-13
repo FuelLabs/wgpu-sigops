@@ -28,7 +28,7 @@ pub async fn verify() {
     let mut rng = ChaCha8Rng::seed_from_u64(1);
 
     for log_limb_size in 13..14 {
-        for _ in 0..1 {
+        for _ in 0..10 {
             let mut message = [0u8; 100];
             rng.fill_bytes(&mut message);
             let message = Message::new(&message);
@@ -65,7 +65,7 @@ pub async fn do_eddsa_test(
     let sig_buf = create_sb_with_data(&device, &sig_u32s);
     let pk_buf = create_sb_with_data(&device, &pk_u32s);
     let msg_buf = create_sb_with_data(&device, &msg_u32s);
-    let result_buf = create_empty_sb(&device, (num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
+    let result_buf = create_empty_sb(&device, (num_limbs * 2 * std::mem::size_of::<u32>()) as u64);
 
     let source = render_ed25519_eddsa_tests("ed25519_eddsa_tests.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "test_verify");
@@ -101,12 +101,9 @@ pub async fn do_eddsa_test(
 
     let recovered_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
     let recovered_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
-    let recovered_t = convert_result_coord(&results[0][(num_limbs * 2)..(num_limbs * 3)].to_vec());
-    let recovered_z = convert_result_coord(&results[0][(num_limbs * 3)..(num_limbs * 4)].to_vec());
 
     let expected = ark_ecverify(&verifying_key, &signature, &message);
-    let recovered =
-        Projective::new(recovered_x, recovered_y, recovered_t, recovered_z).into_affine();
+    let recovered = Affine::new(recovered_x, recovered_y);
 
     assert_eq!(recovered, expected);
 }

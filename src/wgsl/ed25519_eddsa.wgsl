@@ -4,7 +4,10 @@ fn ed25519_verify(
     ayr: ptr<function, BigInt>,
     x_sign: bool,
     p: ptr<function, BigInt>,
-) -> ETEPoint {
+    p_wide: ptr<function, BigIntWide>,
+    rinv: ptr<function, BigInt>,
+    mu_fp: ptr<function, BigInt>,
+) -> ETEAffinePoint {
     // Get the ed25519 curve generator
     var g_xr = get_ed25519_generator_xr();
     var g_yr = get_ed25519_generator_yr();
@@ -17,7 +20,7 @@ fn ed25519_verify(
     var is_valid_y_coord = r.is_valid_y_coord;
 
     if (!is_valid_y_coord) {
-        var empty: ETEPoint;
+        var empty: ETEAffinePoint;
         return empty;
     }
 
@@ -34,7 +37,8 @@ fn ed25519_verify(
         a_pt.z,
     );
 
-    return ete_strauss_shamir_mul(&g, &neg_a_pt, s, k, p);
+    var result_ete = ete_strauss_shamir_mul(&g, &neg_a_pt, s, k, p);
+    return ete_to_affine_non_mont(&result_ete, p, p_wide, rinv, mu_fp);
 
     /*
     // This is about 2x slower than ete_strauss_shamir_mul:
