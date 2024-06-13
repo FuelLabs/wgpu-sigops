@@ -5,8 +5,7 @@ use crate::gpu::{
     create_ub_with_data,
 };
 use crate::shader::render_ed25519_eddsa_tests;
-use ark_ec::CurveGroup;
-use ark_ed25519::{EdwardsProjective as Projective, Fq};
+use ark_ed25519::{EdwardsAffine as Affine, Fq};
 use ark_ff::PrimeField;
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use crate::curve_algos::ed25519_eddsa::{
@@ -124,7 +123,7 @@ pub async fn do_benchmark(
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let pk_buf = create_sb_with_data(&device, &all_pk_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
-    let result_buf = create_empty_sb(&device, (num_signatures * num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
+    let result_buf = create_empty_sb(&device, (num_signatures * num_limbs * 2 * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
 
     let source = render_ed25519_eddsa_tests("ed25519_eddsa_benchmarks.wgsl", log_limb_size);
@@ -154,39 +153,24 @@ pub async fn do_benchmark(
 
     let gpu_ms = sw.elapsed_ms();
 
-    let r = multiprecision::mont::calc_mont_radix(num_limbs, log_limb_size);
-    let res = multiprecision::mont::calc_rinv_and_n0(&p, &r, log_limb_size);
-    let rinv = res.0;
     let convert_result_coord = |data: &Vec<u32>| -> Fq {
         let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
-        // NOTE: There is actually no need to convert out of Montgomery form since we are using ETE
-        // coordinates.
-        // Since 
-        //     x = x/z,    y = y/z,   xy = t/z
-        //     xr = xr/zr, y = yr/zr, xy = tr/zr
-        let result = &result_r * &rinv % &p;
-        //let result = &result_r % &p;
+        let result = &result_r % &p;
 
         Fq::from_be_bytes_mod_order(&result.to_bytes_be())
     };
 
     if check {
         for i in 0..num_signatures {
+            let offset = i * num_limbs * 2;
             let result_x = convert_result_coord(&results[0][
-                (i * num_limbs * 4)..(i * num_limbs * 4 + num_limbs)
+                offset..(offset + num_limbs)
             ].to_vec());
             let result_y = convert_result_coord(&results[0][
-                (i * num_limbs * 4 + num_limbs)..(i * num_limbs * 4 + num_limbs * 2)
-            ].to_vec());
-            let result_t = convert_result_coord(&results[0][
-                (i * num_limbs * 4 + num_limbs * 2)..(i * num_limbs * 4 + num_limbs * 3)
-            ].to_vec());
-            let result_z = convert_result_coord(&results[0][
-                (i * num_limbs * 4 + num_limbs * 3)..(i * num_limbs * 4 + num_limbs * 4)
+                (offset + num_limbs)..(offset + num_limbs * 2)
             ].to_vec());
 
-            let recovered =
-                Projective::new(result_x, result_y, result_t, result_z).into_affine();
+            let recovered = Affine::new(result_x, result_y);
             assert_eq!(recovered, expected_pks[i]);
         }
     }

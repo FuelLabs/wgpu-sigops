@@ -13,7 +13,7 @@
 @group(0) @binding(0) var<storage, read_write> signature: array<u32>;
 @group(0) @binding(1) var<storage, read_write> pk: array<u32>;
 @group(0) @binding(2) var<storage, read_write> msg: array<u32>;
-@group(0) @binding(3) var<storage, read_write> result: array<ETEPoint>;
+@group(0) @binding(3) var<storage, read_write> result: array<ETEAffinePoint>;
 @group(0) @binding(4) var<uniform> params: vec3<u32>;
 
 @compute
@@ -30,6 +30,7 @@ fn benchmark_verify(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var p = get_p();
     var r = get_r();
     var p_wide = get_p_wide();
+    var rinv = get_rinv();
     var mu_fp = get_mu_fp();
 
     var compressed_r_u32s: array<u32, 16>;
@@ -91,6 +92,5 @@ fn benchmark_verify(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     var compressed = compressed_sign_bit == 1u;
 
-    /*result[id] = ETEPoint(k_val, k_val, k_val, k_val);*/
-    result[id] = ed25519_verify(&s_val, &k_val, &ayr_val, compressed, &p);
+    result[id] = ed25519_verify(&s_val, &k_val, &ayr_val, compressed, &p, &p_wide, &rinv, &mu_fp);
 }
