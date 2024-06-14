@@ -308,6 +308,7 @@ pub fn render_secp256k1_ecdsa_tests(
     add_source_to_env(template_path, "constants.wgsl", &mut env);
     add_source_to_env(template_path, "secp256k1_curve_generators.wgsl", &mut env);
     add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
+    add_source_to_env(template_path, "limbs_le_to_u32s_be.wgsl", &mut env);
     add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
@@ -364,6 +365,7 @@ pub fn render_secp256r1_ecdsa_tests(
     add_source_to_env(template_path, "constants.wgsl", &mut env);
     add_source_to_env(template_path, "secp256r1_curve_generators.wgsl", &mut env);
     add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
+    add_source_to_env(template_path, "limbs_le_to_u32s_be.wgsl", &mut env);
     add_source_to_env(tests_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();

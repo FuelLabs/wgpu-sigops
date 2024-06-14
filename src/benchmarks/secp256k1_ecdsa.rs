@@ -1,15 +1,11 @@
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, create_ub_with_data,execute_pipeline, finish_encoder_and_read_from_gpu,
+    create_sb_with_data, create_ub_with_data,execute_pipeline, finish_encoder_and_read_bytes_from_gpu,
     get_device_and_queue,
 };
 use crate::benchmarks::compute_num_workgroups;
 use crate::shader::render_secp256k1_ecdsa_tests;
-use ark_ff::PrimeField;
-use ark_secp256k1::{Affine, Fq};
 use fuel_crypto::{Message, SecretKey, Signature};
-use multiprecision::utils::calc_num_limbs;
-use multiprecision::bigint;
 use num_bigint::{BigUint, RandomBits};
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
@@ -54,7 +50,6 @@ pub async fn do_benchmark(
     log_limb_size: u32,
     num_signatures: usize,
 ) -> (u32, u32) {
-    let num_limbs = calc_num_limbs(log_limb_size, 256);
     let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
@@ -73,20 +68,11 @@ pub async fn do_benchmark(
         let secret = SecretKey::random(&mut rng);
         let pk = secret.public_key();
 
-        let pk_affine_bytes = pk.as_slice();
-        let pk_x = pk_affine_bytes[0..32].to_vec();
-        let pk_y = pk_affine_bytes[32..64].to_vec();
-        let pk_x = BigUint::from_bytes_be(&pk_x);
-        let pk_y = BigUint::from_bytes_be(&pk_y);
-        let pk_x = Fq::from_be_bytes_mod_order(&pk_x.to_bytes_be());
-        let pk_y = Fq::from_be_bytes_mod_order(&pk_y.to_bytes_be());
-        let pk = Affine::new(pk_x, pk_y);
-
         let fuel_signature = Signature::sign(&secret, &message);
 
         signatures.push(fuel_signature);
         messages.push(message);
-        expected_pks.push(pk);
+        expected_pks.push(pk.clone());
     }
 
     // Perform signature recovery using the CPU
@@ -125,7 +111,7 @@ pub async fn do_benchmark(
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
-    let result_buf = create_empty_sb(&device, (num_limbs * 3 * num_signatures * std::mem::size_of::<u32>()) as u64);
+    let result_buf = create_empty_sb(&device, (16 * num_signatures * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -147,30 +133,14 @@ pub async fn do_benchmark(
     );
 
     let results =
-        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
             .await;
     let gpu_ms = sw.elapsed_ms();
 
-    let convert_result_coord = |data: &Vec<u32>| -> Fq {
-        let result = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
-        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
-    };
-
     if check {
         for i in 0..num_signatures {
-            let result_x = convert_result_coord(&results[0][
-                (i * num_limbs * 3)..(i * num_limbs * 3 + num_limbs)
-            ].to_vec());
-            let result_y = convert_result_coord(&results[0][
-                (i * num_limbs * 3 + num_limbs)..(i * num_limbs * 3 + num_limbs * 2)
-            ].to_vec());
-            let result_z = convert_result_coord(&results[0][
-                (i * num_limbs * 3 + num_limbs * 2)..(i * num_limbs * 3 + num_limbs * 3)
-            ].to_vec());
-
-            assert_eq!(result_x, expected_pks[i].x);
-            assert_eq!(result_y, expected_pks[i].y);
-            assert_eq!(result_z, Fq::from(1u32));
+            let result_bytes = &results[0][i * 64..i * 64 + 64];
+            assert_eq!(result_bytes, expected_pks[i].as_slice());
         }
     }
 

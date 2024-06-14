@@ -10,7 +10,7 @@ use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use crate::curve_algos::coords;
 use crate::curve_algos::ed25519_eddsa::{
     ark_ecverify, compressed_y_to_eteprojective, conditional_assign, conditional_negate,
-    decompress_to_ete_unsafe, is_negative, sqrt_ratio_i,
+    decompress_to_ete_unsafe, is_negative, sqrt_ratio_i, compress_ark_projective,
 };
 use fuel_crypto::Message;
 use multiprecision::utils::calc_num_limbs;
@@ -102,10 +102,14 @@ pub async fn do_eddsa_test(
     let recovered_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
     let recovered_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
 
-    let expected = ark_ecverify(&verifying_key, &signature, &message);
+    let ark_recovered = ark_ecverify(&verifying_key, &signature, &message);
+    let ark_recovered_bytes = compress_ark_projective(ark_recovered);
     let recovered = Affine::new(recovered_x, recovered_y);
 
-    assert_eq!(recovered, expected);
+    let sig_r_bytes = signature.r_bytes();
+ 
+    assert_eq!(sig_r_bytes.as_slice(), ark_recovered_bytes);
+    assert_eq!(recovered, ark_recovered);
 }
 
 #[serial_test::serial]

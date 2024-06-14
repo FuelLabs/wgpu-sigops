@@ -9,10 +9,11 @@
 {% include "secp_curve_utils.wgsl" %}
 {% include "secp256k1_curve_generators.wgsl" %}
 {% include "bytes_be_to_limbs_le.wgsl" %}
+{% include "limbs_le_to_u32s_be.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> sig: array<u32, 16>;
 @group(0) @binding(1) var<storage, read_write> msg: array<u32, 8>;
-@group(0) @binding(2) var<storage, read_write> result: Point;
+@group(0) @binding(2) var<storage, read_write> result: array<u32, 16>;
 
 @compute
 @workgroup_size(1)
@@ -54,5 +55,14 @@ fn test_secp256k1_recover(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var r = get_r();
     var rinv = get_rinv();
 
-    result = secp256k1_ecrecover(&r_bytes_be, &s_bytes_be, &msg_bytes_be, &p_bigint, &p_wide, &scalar_p, &scalar_p_wide, &r, &rinv, &mu_fp, &mu_fr);
+    var recovered = secp256k1_ecrecover(&r_bytes_be, &s_bytes_be, &msg_bytes_be, &p_bigint, &p_wide, &scalar_p, &scalar_p_wide, &r, &rinv, &mu_fp, &mu_fr);
+
+    var x_limbs = recovered.x.limbs;
+    var y_limbs = recovered.y.limbs;
+    var x_bytes = limbs_le_to_u32s_be(&x_limbs, {{ log_limb_size }}u);
+    var y_bytes = limbs_le_to_u32s_be(&y_limbs, {{ log_limb_size }}u);
+    for (var i = 0u; i < 8u; i ++) {
+        result[i] = x_bytes[i];
+        result[i + 8u] = y_bytes[i];
+    }
 }
