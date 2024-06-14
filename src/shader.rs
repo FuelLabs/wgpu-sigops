@@ -193,6 +193,26 @@ pub fn render_bytes_to_limbs_test(
     do_render(p, p, b, log_limb_size, &template)
 }
 
+pub fn render_limbs_to_u32s_test(
+    template_file: &str,
+    p: &BigUint,
+    b: &BigUint,
+    log_limb_size: u32,
+) -> String {
+    let template_path: &str = "src/wgsl/";
+    let tests_path: &str = "src/wgsl/tests";
+
+    let mut env = Environment::new();
+
+    add_source_to_env(template_path, "bigint.wgsl", &mut env);
+    add_source_to_env(template_path, "limbs_le_to_u32s_be.wgsl", &mut env);
+    add_source_to_env(template_path, "constants.wgsl", &mut env);
+    add_source_to_env(tests_path, template_file, &mut env);
+
+    let template = env.get_template(template_file).unwrap();
+    do_render(p, p, b, log_limb_size, &template)
+}
+
 pub fn render_bigint_ff_mont_tests(
     template_file: &str,
     p: &BigUint,

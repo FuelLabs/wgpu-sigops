@@ -127,13 +127,13 @@ pub fn create_bind_group(
     })
 }
 
-pub async fn finish_encoder_and_read_from_gpu(
+pub async fn finish_encoder_and_read_bytes_from_gpu(
     device: &wgpu::Device,
     queue: &wgpu::Queue,
     mut command_encoder: Box<wgpu::CommandEncoder>,
     buffers: &[wgpu::Buffer],
-) -> Vec<Vec<u32>> {
-    let mut results = Vec::<Vec<u32>>::with_capacity(buffers.len());
+) -> Vec<Vec<u8>> {
+    let mut results = Vec::<Vec<u8>>::with_capacity(buffers.len());
     let mut staging_buffers = Vec::<wgpu::Buffer>::with_capacity(buffers.len());
 
     for buffer in buffers {
@@ -158,10 +158,9 @@ pub async fn finish_encoder_and_read_from_gpu(
 
         if let Some(Ok(())) = receiver.receive().await {
             let data = buffer_slice.get_mapped_range();
-            let result: Vec<u32> = bytemuck::cast_slice(&data).to_vec();
+            results.push(data.to_vec());
             drop(data);
             staging_buffer.unmap();
-            results.push(result);
         } else {
             panic!("failed to run compute on gpu!")
         }
@@ -169,6 +168,21 @@ pub async fn finish_encoder_and_read_from_gpu(
     device.destroy();
 
     results
+}
+
+pub async fn finish_encoder_and_read_from_gpu(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    command_encoder: Box<wgpu::CommandEncoder>,
+    buffers: &[wgpu::Buffer],
+) -> Vec<Vec<u32>> {
+    let bytes = finish_encoder_and_read_bytes_from_gpu(device, queue, command_encoder, buffers).await;
+    let mut result: Vec<Vec<u32>> = Vec::with_capacity(bytes.len());
+    for r in bytes {
+        result.push(bytemuck::cast_slice(&r).to_vec());
+    }
+
+    result
 }
 
 #[cfg(test)]

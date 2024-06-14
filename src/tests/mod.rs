@@ -3,6 +3,8 @@ pub mod bigint_and_ff;
 #[cfg(test)]
 pub mod bytes_to_limbs;
 #[cfg(test)]
+pub mod limbs_to_bytes;
+#[cfg(test)]
 pub mod ed25519_curve;
 #[cfg(test)]
 pub mod ed25519_eddsa;
