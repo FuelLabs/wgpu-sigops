@@ -7,13 +7,14 @@
 {% include "ed25519_utils.wgsl" %}
 {% include "ed25519_eddsa.wgsl" %}
 {% include "bytes_be_to_limbs_le.wgsl" %}
+{% include "limbs_le_to_u32s_be.wgsl" %}
 {% include "sha512.wgsl" %}
 {% include "ed25519_reduce_fr.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> signature: array<u32>;
 @group(0) @binding(1) var<storage, read_write> pk: array<u32>;
 @group(0) @binding(2) var<storage, read_write> msg: array<u32>;
-@group(0) @binding(3) var<storage, read_write> result: array<ETEAffinePoint>;
+@group(0) @binding(3) var<storage, read_write> is_valid: array<u32>;
 @group(0) @binding(4) var<uniform> params: vec3<u32>;
 
 @compute
@@ -92,5 +93,16 @@ fn benchmark_verify(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     var compressed = compressed_sign_bit == 1u;
 
-    result[id] = ed25519_verify(&s_val, &k_val, &ayr_val, compressed, &p, &p_wide, &rinv, &mu_fp);
+    var result_affine = ed25519_verify(&s_val, &k_val, &ayr_val, compressed, &p, &p_wide, &rinv, &mu_fp);
+
+    var compressed_y_u32s = compress_eteaffine(&result_affine, {{ log_limb_size }}u);
+
+    var v = 1u;
+    for (var i = 0u; i < 8u; i ++) {
+        if (compressed_y_u32s[7u - i] != u32_be_to_le(signature[id * 16u + i])) {
+            v = 0u;
+            break;
+        }
+    }
+    is_valid[id] = v;
 }

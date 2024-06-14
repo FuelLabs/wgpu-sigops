@@ -38,15 +38,24 @@ fn bytes_be_to_u32s(bytes: ptr<function, array<u32, 32>>) -> array<u32, 8> {
     return result_arr;
 }
 
+fn limbs_le_to_bytes_be(
+    limbs: ptr<function, array<u32, {{ num_limbs }}>>,
+    log_limb_size: u32,
+) -> array<u32, 32> {
+    var bytes: array<u32, 32>;
+    for (var i = 0u; i < 32u; i ++) {
+        bytes[i] = byte_from_limbs_le(limbs, i, log_limb_size);
+    }
+
+    return bytes;
+}
+
 fn limbs_le_to_u32s_be(
     limbs: ptr<function, array<u32, {{ num_limbs }}>>,
     log_limb_size: u32,
 ) -> array<u32, 8> {
     // Convert limbs to bytes
-    var bytes: array<u32, 32>;
-    for (var i = 0u; i < 32u; i ++) {
-        bytes[i] = byte_from_limbs_le(limbs, i, log_limb_size);
-    }
+    var bytes = limbs_le_to_bytes_be(limbs, log_limb_size);
 
     // Convert bytes to u32s
     return bytes_be_to_u32s(&bytes);

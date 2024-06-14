@@ -85,46 +85,49 @@ To ensure a fair comparision, the CPU benchmarks use the same libraries that
 Further optimisations may improve GPU performance, such as precomputation
 and/or the GLV method for scalar multiplication.
 
-ed25519 signature verification benchmarks: 
-
-| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
-| ------------------ | ------------------ | ------------------ |
-| 1024               | 92                 | 278                |
-| 2048               | 221                | 242                |
-| 4096               | 370                | 326                |
-| 8192               | 740                | 597                |
-| 16384              | 1478               | 1171               |
-| 32768              | 2960               | 2159               |
-| 65536              | 5922               | 4141               |
-| 131072             | 11846              | 5137               |
-
 secp256k1 signature recovery benchmarks: 
-
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
-| 1024               | 32                 | 182                |
-| 2048               | 64                 | 139                |
-| 4096               | 128                | 138                |
-| 8192               | 256                | 204                |
-| 16384              | 512                | 340                |
-| 32768              | 1025               | 537                |
-| 65536              | 2052               | 882                |
-| 131072             | 4100               | 1683               |
+| 1024               | 32                 | 163                |
+| 2048               | 63                 | 142                |
+| 4096               | 127                | 136                |
+| 8192               | 254                | 210                |
+| 16384              | 507                | 312                |
+| 32768              | 1015               | 523                |
+| 65536              | 2031               | 898                |
+| 131072             | 4061               | 1689               |
+
+GPU timings include data transfer.
 
 secp256r1 signature verification benchmarks: 
-
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
-| 256                | 126                | 188                |
-| 512                | 252                | 137                |
-| 1024               | 506                | 135                |
-| 2048               | 1044               | 136                |
-| 4096               | 2025               | 196                |
-| 8192               | 4051               | 293                |
-| 16384              | 8101               | 496                |
-| 32768              | 16197              | 803                |
-| 65536              | 32375              | 1464               |
-| 131072             | 64834              | 2899               |
+| 256                | 127                | 182                |
+| 512                | 255                | 154                |
+| 1024               | 509                | 157                |
+| 2048               | 1020               | 161                |
+| 4096               | 2040               | 192                |
+| 8192               | 4191               | 316                |
+| 16384              | 8160               | 496                |
+| 32768              | 16324              | 813                |
+| 65536              | 33518              | 1486               |
+| 131072             | 65307              | 2852               |
+
+GPU timings include data transfer.
+
+ed25519 signature verification benchmarks: 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 98                 | 238                |
+| 2048               | 196                | 247                |
+| 4096               | 391                | 343                |
+| 8192               | 907                | 657                |
+| 16384              | 1813               | 1269               |
+| 32768              | 3135               | 2394               |
+| 65536              | 6271               | 5119               |
+| 131072             | 12543              | 5112               |
+
+GPU timings include data transfer.
 
 
 ### Montgomery multiplication benchmarks
@@ -134,8 +137,3 @@ These benchmarks can help select the best choice of limb size for different plat
 ```bash
 cargo test mont_mul_benchmarks -- --nocapture
 ```
-
-## Things to do
-
-- Modify the ed25519 signature verification shader to output a 1 or 0 depending
-  on whether the signature is valid or not.

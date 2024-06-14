@@ -10,6 +10,21 @@ struct ETEAffinePoint {
     y: BigInt,
 }
 
+fn compress_eteaffine(
+    pt: ptr<function, ETEAffinePoint>,
+    log_limb_size: u32,
+) -> array<u32, 8> {
+    var y_limbs = (*pt).y.limbs;
+    var y_bytes = limbs_le_to_bytes_be(&y_limbs, {{ log_limb_size }}u);
+
+    var pt_x = (*pt).x;
+    if (is_negative(&pt_x)) {
+        y_bytes[0] ^= 0x80u;
+    }
+
+    return bytes_be_to_u32s(&y_bytes);
+}
+
 /// https://www.hyperelliptic.org/EFD/g1p/auto-twisted-extended-1.html#addition-add-2008-hwcd-3
 fn ete_add_2008_hwcd_3(
     pt_0: ptr<function, ETEPoint>,

@@ -1,19 +1,15 @@
 use crate::benchmarks::compute_num_workgroups;
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
     create_ub_with_data,
 };
 use crate::shader::render_ed25519_eddsa_tests;
-use ark_ed25519::{EdwardsAffine as Affine, Fq};
-use ark_ff::PrimeField;
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use crate::curve_algos::ed25519_eddsa::{
     ark_ecverify, curve25519_ecverify,
 };
 use fuel_crypto::Message;
-use multiprecision::utils::calc_num_limbs;
-use multiprecision::bigint;
 use rand::RngCore;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -57,9 +53,6 @@ pub async fn do_benchmark(
     log_limb_size: u32,
     num_signatures: usize,
 ) -> (u32, u32) {
-    let p = crate::moduli::ed25519_fq_modulus_biguint();
-    let num_limbs = calc_num_limbs(log_limb_size, 256);
-
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     let workgroup_size = 256;
     let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = compute_num_workgroups(num_signatures, workgroup_size);
@@ -123,7 +116,7 @@ pub async fn do_benchmark(
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let pk_buf = create_sb_with_data(&device, &all_pk_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
-    let result_buf = create_empty_sb(&device, (num_signatures * num_limbs * 2 * std::mem::size_of::<u32>()) as u64);
+    let is_valid_buf = create_empty_sb(&device, (num_signatures * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
 
     let source = render_ed25519_eddsa_tests("ed25519_eddsa_benchmarks.wgsl", log_limb_size);
@@ -135,7 +128,7 @@ pub async fn do_benchmark(
         &device,
         &compute_pipeline,
         0,
-        &[&sig_buf, &pk_buf, &msg_buf, &result_buf, &params_buf],
+        &[&sig_buf, &pk_buf, &msg_buf, &is_valid_buf, &params_buf],
     );
 
     execute_pipeline(
@@ -148,30 +141,13 @@ pub async fn do_benchmark(
     );
 
     let results =
-        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[is_valid_buf])
             .await;
 
     let gpu_ms = sw.elapsed_ms();
-
-    let convert_result_coord = |data: &Vec<u32>| -> Fq {
-        let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
-        let result = &result_r % &p;
-
-        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
-    };
-
     if check {
         for i in 0..num_signatures {
-            let offset = i * num_limbs * 2;
-            let result_x = convert_result_coord(&results[0][
-                offset..(offset + num_limbs)
-            ].to_vec());
-            let result_y = convert_result_coord(&results[0][
-                (offset + num_limbs)..(offset + num_limbs * 2)
-            ].to_vec());
-
-            let recovered = Affine::new(result_x, result_y);
-            assert_eq!(recovered, expected_pks[i]);
+            assert_eq!(results[0][i * 4], 1);
         }
     }
 

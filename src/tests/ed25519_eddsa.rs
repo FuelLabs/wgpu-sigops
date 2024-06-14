@@ -1,6 +1,6 @@
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
 };
 use crate::shader::{render_ed25519_eddsa_tests, render_ed25519_utils_tests};
 use ark_ec::{AffineRepr, CurveGroup};
@@ -54,8 +54,6 @@ pub async fn do_eddsa_test(
     let sig_bytes_be = signature.to_bytes();
     let pk_bytes_be = verifying_key.to_bytes();
 
-    let num_limbs = calc_num_limbs(log_limb_size, 256);
-
     let (device, queue) = get_device_and_queue().await;
 
     let sig_u32s: Vec<u32> = bytemuck::cast_slice(&sig_bytes_be).to_vec();
@@ -65,7 +63,7 @@ pub async fn do_eddsa_test(
     let sig_buf = create_sb_with_data(&device, &sig_u32s);
     let pk_buf = create_sb_with_data(&device, &pk_u32s);
     let msg_buf = create_sb_with_data(&device, &msg_u32s);
-    let result_buf = create_empty_sb(&device, (num_limbs * 2 * std::mem::size_of::<u32>()) as u64);
+    let is_valid_buf = create_empty_sb(&device, (std::mem::size_of::<u32>()) as u64);
 
     let source = render_ed25519_eddsa_tests("ed25519_eddsa_tests.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "test_verify");
@@ -76,7 +74,7 @@ pub async fn do_eddsa_test(
         &device,
         &compute_pipeline,
         0,
-        &[&sig_buf, &pk_buf, &msg_buf, &result_buf],
+        &[&sig_buf, &pk_buf, &msg_buf, &is_valid_buf],
     );
 
     execute_pipeline(
@@ -89,27 +87,17 @@ pub async fn do_eddsa_test(
     );
 
     let results =
-        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[is_valid_buf])
             .await;
-
-    let convert_result_coord = |data: &Vec<u32>| -> Fq {
-        let result_r = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
-        let result = &result_r;
-
-        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
-    };
-
-    let recovered_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
-    let recovered_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
 
     let ark_recovered = ark_ecverify(&verifying_key, &signature, &message);
     let ark_recovered_bytes = compress_ark_projective(ark_recovered);
-    let recovered = Affine::new(recovered_x, recovered_y);
-
     let sig_r_bytes = signature.r_bytes();
- 
-    assert_eq!(sig_r_bytes.as_slice(), ark_recovered_bytes);
-    assert_eq!(recovered, ark_recovered);
+
+    for i in 0..32 {
+        assert_eq!(sig_r_bytes[31 - i], ark_recovered_bytes[i]);
+    }
+    assert_eq!(results[0][0], 1);
 }
 
 #[serial_test::serial]

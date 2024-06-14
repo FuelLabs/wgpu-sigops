@@ -621,6 +621,7 @@ pub fn render_ed25519_eddsa_tests(
     add_source_to_env(template_path, "ed25519_utils.wgsl", &mut env);
     add_source_to_env(template_path, "ed25519_eddsa.wgsl", &mut env);
     add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
+    add_source_to_env(template_path, "limbs_le_to_u32s_be.wgsl", &mut env);
     add_source_to_env(template_path, "sha512.wgsl", &mut env);
     add_source_to_env(template_path, "ed25519_reduce_fr.wgsl", &mut env);
     add_source_to_env(tests_path, template_file, &mut env);
