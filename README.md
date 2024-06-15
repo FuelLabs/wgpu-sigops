@@ -17,12 +17,69 @@ cargo test -- --skip benchmarks
 
 ## Usage
 
+### Warmup
+
+Note that the first invocation of any GPU shader will take signficantly longer
+than subsequent invocations. Expect a 1-2 minute warmup period per shader,
+depending on your platform.
+
+### secp256k1 and secp256r1 ECDSA signature recovery
+
+To perform multiple secp256k1 / secp256r1 signature recovery operations in
+parallel, use `ecrecover()` in either `src/secp256k1_ecdsa.rs` or
+`src/secp256r1_ecdsa.rs` respectively.
+
+The function signature of `ecrecover` is:
+
+```rs
+pub async fn ecrecover(
+    signatures: Vec<Signature>,
+    messages: Vec<Message>,
+    log_limb_size: u32,
+) -> Vec<Vec<u8>>
+```
+
+`Signature` and `Message` are from
+[`fuel-crypto`](https://crates.io/crates/fuel-crypto).
+
+The length of `signatures` and `messages` should be the same.
+
+`log_limb_size` indicates the bitwidth of each limb in the shaders'
+representation of big integers. It should be set either 13 or 14. The resulting
+performance of using either value depends on the platform on which the code
+will run, but our benchmarks show no significant performance difference.
+
+The output is a `Vec` of byte-vectors which correspond to the big-integer byte
+representation of the affine public key per i-th recovery.
+
+### ed25519 EdDSA signature verification
+
+To perform multiple ed25519 signature verification operations in
+parallel, use `ecverify()` in `src/ed25519_eddsa.rs`.
+
+```rs
+pub async fn ecverify(
+    signatures: Vec<Signature>,
+    messages: Vec<Message>,
+    verifying_keys: Vec<VerifyingKey>,
+    log_limb_size: u32,
+) -> Vec<bool>
+```
+
+`Signature` is from [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek).
+`Message` and `VerifyingKey` are from
+`fuel-crypto`](https://crates.io/crates/fuel-crypto).
+
+The output is a `Vec` of booleans which correspond to `true` if the i-th
+recovery is valid, and `false` otherwise.
+
+### Examples
+
 See the following source files for examples on how to invoke the GPU shaders:
 
 - `src/benchmarks/secp256k1_ecdsa.rs`
 - `src/benchmarks/secp256r1_ecdsa.rs`
 - `src/benchmarks/ed25519_eddsa.rs`
-
 
 ## Overview
 
@@ -32,7 +89,8 @@ This repository contains GPU shaders for the following cryptographic operations:
 - secp256r1 ECDSA signature recovery
 - curve25519 EdDSA signature verification
 
-These shaders are written to mirror the same underlying algorithms and code that Fuel nodes use.
+These shaders are written to mirror the same underlying algorithms and code
+that Fuel nodes use.
 
 These GPU shaders are written in the [WebGPU Shader
 Language](https://www.w3.org/TR/WGSL/), and are executed by the
@@ -86,8 +144,10 @@ signatures, GPU performance beats CPU.
 To ensure a fair comparision, the CPU benchmarks use the same libraries that
 [`fuel-crypto`](https://crates.io/crates/fuel-crypto) uses under the hood:
 
-- [`secp256k1`](https://crates.io/crates/secp256k1), which uses C bindings to `libsecp256k1`
-- [`p256`](https://crates.io/crates/p256), a pure Rust implementation of the secp256r1 curve
+- [`secp256k1`](https://crates.io/crates/secp256k1), which uses C bindings to
+  `libsecp256k1`
+- [`p256`](https://crates.io/crates/p256), a pure Rust implementation of the
+  secp256r1 curve
 - [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek), a pure Rust
   implementation of curve25519 and the ed25519 signature scheme.
 
