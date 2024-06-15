@@ -51,3 +51,17 @@ fn test_ete_to_affine(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     result = ETEPoint(x, y, t, z);
 }
+
+@compute
+@workgroup_size(1)
+fn test_ete_mul(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p = get_p();
+    var scalar_p = get_scalar_p();
+    var a_pt = a;
+    var b_pt = b;
+    var one: BigInt; one.limbs[0] = 1u;
+    var s = bigint_sub(&scalar_p, &one);
+
+    var result_pt = ete_mul(&a_pt, &s, &p);
+    result = result_pt;
+}
