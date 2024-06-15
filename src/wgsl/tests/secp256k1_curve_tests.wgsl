@@ -64,3 +64,17 @@ fn test_projective_to_affine(@builtin(global_invocation_id) global_id: vec3<u32>
     var result_pt = projective_to_affine_non_mont(&a_pt, &p_bigint, &p_wide, &r, &rinv, &mu_fp);
     result = result_pt;
 }
+
+@compute
+@workgroup_size(1)
+fn test_projective_mul(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p = get_p();
+    var scalar_p = get_scalar_p();
+    var a_pt = a;
+    var b_pt = b;
+    var one: BigInt; one.limbs[0] = 1u;
+    var s = bigint_sub(&scalar_p, &one);
+
+    var result_pt = projective_mul(&a_pt, &s, &p);
+    result = result_pt;
+}
