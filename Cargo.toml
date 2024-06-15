@@ -16,6 +16,7 @@ ark-ed25519 = "0.4.0"
 ark-ff = "0.4.0"
 ark-ec = "0.4.0"
 fuel-crypto = { version = "0.49.0", features = ["random", "test-helpers"] }
+fuel-types = { version = "0.49.0" }
 p256 = { version = "0.13.2" }
 ed25519-dalek = { version = "2.0.0", default-features = false, features = ["rand_core"] }
 curve25519-dalek = "4.0.0"

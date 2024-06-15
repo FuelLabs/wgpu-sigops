@@ -33,13 +33,16 @@ pub async fn test_secp256k1_ecrecover() {
 
             let msg_bytes = message.as_slice();
             let sig_bytes = fuel_signature.as_slice();
-
             let pk_affine_bytes = pk.as_slice();
+
+            //let msg_bytes = vec![0u8; msg_bytes.len()];
+            //let sig_bytes = vec![0u8; sig_bytes.len()];
+            //let pk_affine_bytes = vec![0u8; 64];
 
             do_secp256k1_test(
                 &sig_bytes,
                 &msg_bytes,
-                pk_affine_bytes,
+                &pk_affine_bytes,
                 log_limb_size,
                 "secp256k1_ecdsa_tests.wgsl",
                 "test_secp256k1_recover",

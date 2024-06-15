@@ -4,11 +4,12 @@ use crate::gpu::{
     get_device_and_queue,
 };
 use crate::benchmarks::compute_num_workgroups;
-use crate::shader::render_secp256k1_ecdsa_tests;
-use fuel_crypto::{Message, Signature};
+use crate::shader::render_secp256r1_ecdsa_tests;
+use fuel_types::Bytes64;
+use fuel_crypto::Message;
 
 pub async fn ecrecover(
-    signatures: Vec<Signature>,
+    signatures: Vec<Bytes64>,
     messages: Vec<Message>,
     log_limb_size: u32,
 ) -> Vec<Vec<u8>> {
@@ -52,8 +53,8 @@ pub async fn ecrecover(
     let params = &[num_x_workgroups as u32, num_y_workgroups as u32, num_z_workgroups as u32];
 
     let (device, queue) = get_device_and_queue().await;
-    let source = render_secp256k1_ecdsa_tests("secp256k1_ecdsa_benchmarks.wgsl", log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_secp256k1_recover");
+    let source = render_secp256r1_ecdsa_tests("secp256r1_ecdsa_benchmarks.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_secp256r1_recover");
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);

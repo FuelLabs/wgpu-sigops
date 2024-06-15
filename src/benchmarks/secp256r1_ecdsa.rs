@@ -1,14 +1,7 @@
-use crate::gpu::{
-    create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, create_ub_with_data,execute_pipeline, finish_encoder_and_read_bytes_from_gpu,
-    get_device_and_queue,
-};
-use crate::benchmarks::compute_num_workgroups;
-use crate::shader::render_secp256r1_ecdsa_tests;
 use fuel_crypto::secp256r1::p256::{recover, sign_prehashed};
 use fuel_crypto::Message;
 use p256::ecdsa::SigningKey;
-use multiprecision::utils::calc_num_limbs;
+use fuel_types::Bytes64;
 use num_bigint::{BigUint, RandomBits};
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
@@ -53,13 +46,9 @@ pub async fn do_benchmark(
     log_limb_size: u32,
     num_signatures: usize,
 ) -> (u32, u32) {
-    let num_limbs = calc_num_limbs(log_limb_size, 256);
     let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
-
-    let workgroup_size = 256;
-    let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = compute_num_workgroups(num_signatures, workgroup_size);
 
     let mut signatures = Vec::with_capacity(num_signatures);
     let mut messages = Vec::with_capacity(num_signatures);
@@ -73,7 +62,7 @@ pub async fn do_benchmark(
         let verifying_key = signing_key.verifying_key();
 
         let pk_affine_bytes = &verifying_key.to_sec1_bytes()[1..65];
-        let fuel_signature = sign_prehashed(&signing_key, &message).expect("Couldn't sign");
+        let fuel_signature: Bytes64 = sign_prehashed(&signing_key, &message).expect("Couldn't sign");
 
         signatures.push(fuel_signature);
         messages.push(message);
@@ -87,63 +76,14 @@ pub async fn do_benchmark(
     }
     let cpu_ms = sw.elapsed_ms();
 
-    // Start the GPU stopwatch
+    // Perform signature recovery using the GPU
     let sw = Stopwatch::start_new();
-
-    // Set up data for the input buffers
-    let mut all_sig_bytes = Vec::<u8>::with_capacity(num_signatures * 64);
-    let mut all_msg_bytes = Vec::<u8>::with_capacity(num_signatures * 32);
-    for sig in signatures {
-        let sig_bytes = sig.as_slice();
-        all_sig_bytes.extend(sig_bytes);
-    }
-
-    for msg in messages {
-        let msg_bytes = msg.as_slice();
-        all_msg_bytes.extend(msg_bytes);
-    }
-
-    let all_sig_u32s: Vec<u32> = bytemuck::cast_slice(&all_sig_bytes).to_vec();
-    let all_msg_u32s: Vec<u32> = bytemuck::cast_slice(&all_msg_bytes).to_vec();
-
-    let params = &[num_x_workgroups as u32, num_y_workgroups as u32, num_z_workgroups as u32];
-
-    let (device, queue) = get_device_and_queue().await;
-    let source = render_secp256r1_ecdsa_tests("secp256r1_ecdsa_benchmarks.wgsl", log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_secp256r1_recover");
-
-    let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
-    let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
-    let result_buf = create_empty_sb(&device, (num_limbs * 3 * num_signatures * std::mem::size_of::<u32>()) as u64);
-    let params_buf = create_ub_with_data(&device, params);
-
-    let mut command_encoder = create_command_encoder(&device);
-
-    let bind_group = create_bind_group(
-        &device,
-        &compute_pipeline,
-        0,
-        &[&sig_buf, &msg_buf, &result_buf, &params_buf],
-    );
-
-    execute_pipeline(
-        &mut command_encoder,
-        &compute_pipeline,
-        &bind_group,
-        num_x_workgroups as u32,
-        num_y_workgroups as u32,
-        num_z_workgroups as u32,
-    );
-
-    let results =
-        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
-            .await;
+    let recovered = crate::secp256r1_ecdsa::ecrecover(signatures, messages, log_limb_size).await;
     let gpu_ms = sw.elapsed_ms();
 
     if check {
         for i in 0..num_signatures {
-            let result_bytes = &results[0][i * 64..i * 64 + 64];
-            assert_eq!(result_bytes, expected_pks[i]);
+            assert_eq!(recovered[i], expected_pks[i].as_slice());
         }
     }
 

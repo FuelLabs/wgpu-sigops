@@ -24,6 +24,12 @@ fn secp256r1_ecrecover(
         z = bigint_sub(scalar_p, &z);
     }
 
+    // TODO: check this
+    if (bigint_is_zero(&sig_r)) {
+        var z: BigInt;
+        return Point(z, z, z);
+    }
+
     var r_x = sig_r;
 
     var r_xr = ff_mul(&r_x, r, p, p_wide, mu_fp);

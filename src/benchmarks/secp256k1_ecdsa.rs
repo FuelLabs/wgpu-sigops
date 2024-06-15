@@ -31,6 +31,7 @@ pub async fn secp256k1_ecrecover_benchmarks() {
     let check = true;
     let log_limb_size = 13u32;
     let num_signatures = 2u32.pow(13u32) as usize;
+    //let num_signatures = 255;
 
     let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
 
@@ -74,6 +75,7 @@ pub async fn do_benchmark(
     }
     let cpu_ms = sw.elapsed_ms();
 
+    // Perform signature recovery using the GPU
     let sw = Stopwatch::start_new();
     let recovered = crate::secp256k1_ecdsa::ecrecover(signatures, messages, log_limb_size).await;
     let gpu_ms = sw.elapsed_ms();

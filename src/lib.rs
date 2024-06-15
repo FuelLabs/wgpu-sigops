@@ -5,3 +5,5 @@ pub mod curve_algos;
 pub mod tests;
 pub mod benchmarks;
 pub mod secp256k1_ecdsa;
+pub mod secp256r1_ecdsa;
+pub mod ed25519_eddsa;

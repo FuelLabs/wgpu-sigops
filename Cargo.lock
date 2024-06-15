@@ -2285,6 +2285,7 @@ dependencies = [
  "curve25519-dalek",
  "ed25519-dalek",
  "fuel-crypto",
+ "fuel-types",
  "futures-intrusive",
  "hex",
  "k256",

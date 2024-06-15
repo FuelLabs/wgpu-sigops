@@ -53,6 +53,8 @@ fn ff_sub(
   https://www.sandeep.de/my/papers/2006_ActaApplMath_EfficientSoftFiniteF.pdf
 
   Note that x must not be in Montgomery form.
+
+  TODO: find out why this fails if x == 0
 */
 fn ff_inverse(
     x: ptr<function, BigInt>,

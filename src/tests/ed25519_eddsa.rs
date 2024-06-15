@@ -24,7 +24,7 @@ use std::ops::Mul;
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn verify() {
+pub async fn test_ed25519_ecverify() {
     let mut rng = ChaCha8Rng::seed_from_u64(1);
 
     for log_limb_size in 13..14 {
