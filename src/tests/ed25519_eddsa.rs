@@ -1,17 +1,18 @@
+use crate::curve_algos::coords;
+use crate::curve_algos::ed25519_eddsa::{
+    ark_ecverify, compress_ark_projective, compressed_y_to_eteprojective, conditional_assign,
+    conditional_negate, decompress_to_ete_unsafe, is_negative, sqrt_ratio_i,
+};
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_bytes_from_gpu,
+    finish_encoder_and_read_from_gpu, get_device_and_queue,
 };
 use crate::shader::{render_ed25519_eddsa_tests, render_ed25519_utils_tests};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ed25519::{EdwardsAffine as Affine, EdwardsProjective as Projective, Fq, Fr};
 use ark_ff::{BigInteger, PrimeField};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
-use crate::curve_algos::coords;
-use crate::curve_algos::ed25519_eddsa::{
-    ark_ecverify, compressed_y_to_eteprojective, conditional_assign, conditional_negate,
-    decompress_to_ete_unsafe, is_negative, sqrt_ratio_i, compress_ark_projective,
-};
 use fuel_crypto::Message;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{bigint, mont};
@@ -86,9 +87,13 @@ pub async fn do_eddsa_test(
         1,
     );
 
-    let results =
-        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[is_valid_buf])
-            .await;
+    let results = finish_encoder_and_read_bytes_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[is_valid_buf],
+    )
+    .await;
 
     let ark_recovered = ark_ecverify(&verifying_key, &signature, &message);
     let ark_recovered_bytes = compress_ark_projective(ark_recovered);
@@ -295,10 +300,8 @@ pub async fn do_reconstruct_ete_point_from_y_invalid_test(
     let result_buf = create_empty_sb(&device, yr_buf.size() * 4);
     let is_valid_buf = create_empty_sb(&device, x_sign_buf.size());
 
-    let source = render_ed25519_utils_tests(
-        "ed25519_reconstruct_ete_from_y_tests.wgsl",
-        log_limb_size,
-    );
+    let source =
+        render_ed25519_utils_tests("ed25519_reconstruct_ete_from_y_tests.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "test_reconstruct_ete_from_y");
 
     let mut command_encoder = create_command_encoder(&device);
@@ -350,10 +353,8 @@ pub async fn do_reconstruct_ete_point_from_y_test(
     let result_buf = create_empty_sb(&device, yr_buf.size() * 4);
     let is_valid_buf = create_empty_sb(&device, x_sign_buf.size());
 
-    let source = render_ed25519_utils_tests(
-        "ed25519_reconstruct_ete_from_y_tests.wgsl",
-        log_limb_size,
-    );
+    let source =
+        render_ed25519_utils_tests("ed25519_reconstruct_ete_from_y_tests.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "test_reconstruct_ete_from_y");
 
     let mut command_encoder = create_command_encoder(&device);

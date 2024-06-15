@@ -35,15 +35,14 @@ pub async fn secp256k1_ecrecover_benchmarks() {
 
     let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
 
-    println!("CPU took {}ms to recover {} secp256k1 ECDSA signatures in serial.", cpu_ms, num_signatures);
+    println!(
+        "CPU took {}ms to recover {} secp256k1 ECDSA signatures in serial.",
+        cpu_ms, num_signatures
+    );
     println!("GPU took {}ms to recover {} secp256k1 ECDSA signatures in parallel (including data transfer cost).", gpu_ms, num_signatures);
 }
 
-pub async fn do_benchmark(
-    check: bool,
-    log_limb_size: u32,
-    num_signatures: usize,
-) -> (u32, u32) {
+pub async fn do_benchmark(check: bool, log_limb_size: u32, num_signatures: usize) -> (u32, u32) {
     let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);

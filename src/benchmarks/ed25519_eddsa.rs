@@ -1,7 +1,5 @@
+use crate::curve_algos::ed25519_eddsa::{ark_ecverify, curve25519_ecverify};
 use ed25519_dalek::{Signature, Signer, SigningKey};
-use crate::curve_algos::ed25519_eddsa::{
-    ark_ecverify, curve25519_ecverify,
-};
 use fuel_crypto::Message;
 use rand::RngCore;
 use rand_chacha::rand_core::SeedableRng;
@@ -37,15 +35,14 @@ pub async fn ed25519_ecverify_benchmarks() {
 
     let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
 
-    println!("CPU took {}ms to recover {} ed25519 EdDSA signatures in serial.", cpu_ms, num_signatures);
+    println!(
+        "CPU took {}ms to recover {} ed25519 EdDSA signatures in serial.",
+        cpu_ms, num_signatures
+    );
     println!("GPU took {}ms to recover {} ed25519 EdDSA signatures in parallel (including data transfer cost).", gpu_ms, num_signatures);
 }
 
-pub async fn do_benchmark(
-    check: bool,
-    log_limb_size: u32,
-    num_signatures: usize,
-) -> (u32, u32) {
+pub async fn do_benchmark(check: bool, log_limb_size: u32, num_signatures: usize) -> (u32, u32) {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
 
     let mut signatures = Vec::with_capacity(num_signatures);
@@ -81,7 +78,8 @@ pub async fn do_benchmark(
 
     // Start the GPU stopwatch
     let sw = Stopwatch::start_new();
-    let all_is_valid = crate::ed25519_eddsa::ecverify(signatures, messages, verifying_keys, log_limb_size).await;
+    let all_is_valid =
+        crate::ed25519_eddsa::ecverify(signatures, messages, verifying_keys, log_limb_size).await;
     let gpu_ms = sw.elapsed_ms();
 
     if check {

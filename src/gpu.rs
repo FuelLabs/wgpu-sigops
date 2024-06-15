@@ -52,8 +52,7 @@ pub fn create_ub_with_data(device: &wgpu::Device, data: &[u32]) -> wgpu::Buffer 
     device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
         label: None,
         contents: bytemuck::cast_slice(data),
-        usage: wgpu::BufferUsages::UNIFORM
-            | wgpu::BufferUsages::COPY_DST,
+        usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
     })
 }
 
@@ -176,7 +175,8 @@ pub async fn finish_encoder_and_read_from_gpu(
     command_encoder: Box<wgpu::CommandEncoder>,
     buffers: &[wgpu::Buffer],
 ) -> Vec<Vec<u32>> {
-    let bytes = finish_encoder_and_read_bytes_from_gpu(device, queue, command_encoder, buffers).await;
+    let bytes =
+        finish_encoder_and_read_bytes_from_gpu(device, queue, command_encoder, buffers).await;
     let mut result: Vec<Vec<u32>> = Vec::with_capacity(bytes.len());
     for r in bytes {
         result.push(bytemuck::cast_slice(&r).to_vec());

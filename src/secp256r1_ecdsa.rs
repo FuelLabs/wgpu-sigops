@@ -1,12 +1,12 @@
+use crate::benchmarks::compute_num_workgroups;
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, create_ub_with_data,execute_pipeline, finish_encoder_and_read_bytes_from_gpu,
-    get_device_and_queue,
+    create_sb_with_data, create_ub_with_data, execute_pipeline,
+    finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
 };
-use crate::benchmarks::compute_num_workgroups;
 use crate::shader::render_secp256r1_ecdsa_tests;
-use fuel_types::Bytes64;
 use fuel_crypto::Message;
+use fuel_types::Bytes64;
 
 pub async fn ecrecover(
     signatures: Vec<Bytes64>,
@@ -44,13 +44,17 @@ pub async fn ecrecover(
     }
 
     let workgroup_size = 256;
-    let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = 
+    let (num_x_workgroups, num_y_workgroups, num_z_workgroups) =
         compute_num_workgroups(next_pow_2, workgroup_size);
 
     let all_sig_u32s: Vec<u32> = bytemuck::cast_slice(&all_sig_bytes).to_vec();
     let all_msg_u32s: Vec<u32> = bytemuck::cast_slice(&all_msg_bytes).to_vec();
 
-    let params = &[num_x_workgroups as u32, num_y_workgroups as u32, num_z_workgroups as u32];
+    let params = &[
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    ];
 
     let (device, queue) = get_device_and_queue().await;
     let source = render_secp256r1_ecdsa_tests("secp256r1_ecdsa_benchmarks.wgsl", log_limb_size);
@@ -58,7 +62,10 @@ pub async fn ecrecover(
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
-    let result_buf = create_empty_sb(&device, (64 * next_pow_2 * std::mem::size_of::<u8>()) as u64);
+    let result_buf = create_empty_sb(
+        &device,
+        (64 * next_pow_2 * std::mem::size_of::<u8>()) as u64,
+    );
     let params_buf = create_ub_with_data(&device, params);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -79,9 +86,13 @@ pub async fn ecrecover(
         num_z_workgroups as u32,
     );
 
-    let results =
-        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
-            .await;
+    let results = finish_encoder_and_read_bytes_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf],
+    )
+    .await;
 
     let mut all_recovered: Vec<Vec<u8>> = Vec::with_capacity(num_signatures * 64);
     for i in 0..num_signatures {

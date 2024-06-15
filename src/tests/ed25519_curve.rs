@@ -1,3 +1,5 @@
+use crate::curve_algos::coords;
+use crate::curve_algos::ed25519_curve as curve;
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
     create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
@@ -7,8 +9,6 @@ use crate::tests::eteprojective_to_mont_limbs;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ed25519::{EdwardsAffine as Affine, EdwardsProjective as Projective, Fq, Fr};
 use ark_ff::{BigInteger, One, PrimeField};
-use crate::curve_algos::coords;
-use crate::curve_algos::ed25519_curve as curve;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{bigint, mont};
 use num_bigint::{BigUint, RandomBits};

@@ -197,8 +197,7 @@ pub async fn do_test(
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (result_len * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source =
-        render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -249,8 +248,7 @@ pub async fn do_expected_test(
     let b_buf = create_empty_sb(&device, a_buf.size());
     let result_buf = create_empty_sb(&device, a_buf.size() + 4);
 
-    let source =
-        render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -703,8 +701,7 @@ async fn do_bigint_wide_sub_test(
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source =
-        render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -764,8 +761,7 @@ async fn do_bigint_wide_gte_test(
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source =
-        render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -815,8 +811,7 @@ async fn do_ff_mul_test(
     let b_buf = create_sb_with_data(&device, &b_limbs);
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
 
-    let source =
-        render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);

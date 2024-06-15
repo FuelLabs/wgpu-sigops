@@ -1,3 +1,5 @@
+use crate::curve_algos::coords;
+use crate::curve_algos::secp256k1_curve as curve;
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
     create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
@@ -7,8 +9,6 @@ use crate::tests::{fq_to_biguint, projectivexyz_to_mont_limbs};
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, One, PrimeField};
 use ark_secp256k1::{Affine, Fq, Fr, Projective};
-use crate::curve_algos::coords;
-use crate::curve_algos::secp256k1_curve as curve;
 use multiprecision::utils::calc_num_limbs;
 use multiprecision::{bigint, mont};
 use num_bigint::{BigUint, RandomBits};
@@ -734,7 +734,7 @@ pub async fn do_projective_to_affine_test(
 ) {
     let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
     let num_limbs = calc_num_limbs(log_limb_size, 256);
-    
+
     let pt_a_limbs = projectivexyz_to_mont_limbs(&a, &p, log_limb_size);
 
     let expected_affine = to_affine_func(a.x, a.y, a.z);

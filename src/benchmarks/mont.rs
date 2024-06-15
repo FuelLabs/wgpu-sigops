@@ -104,8 +104,7 @@ pub async fn do_mont_benchmark(
     let result_buf = create_empty_sb(&device, (num_limbs * 8 * std::mem::size_of::<u8>()) as u64);
     let cost_buf = create_sb_with_data(&device, &[cost]);
 
-    let source =
-        render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
+    let source = render_bigint_ff_mont_tests(filename, &p, &get_secp256k1_b(), log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
 
     let mut command_encoder = create_command_encoder(&device);
@@ -153,4 +152,3 @@ fn expensive_computation(
     }
     return (&result * br * rinv) % p;
 }
-

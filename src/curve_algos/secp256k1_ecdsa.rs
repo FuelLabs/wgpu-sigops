@@ -6,12 +6,12 @@ pub mod tests {
     use ark_secp256k1::{Affine, Fq, Fr, Projective};
     use crypto_bigint::Uint;
     use fuel_crypto::{Message, SecretKey, Signature};
-    use sha2::Digest;
-    use std::ops::Mul;
-    use std::str::FromStr;
     use rand::Rng;
     use rand_chacha::rand_core::SeedableRng;
     use rand_chacha::ChaCha8Rng;
+    use sha2::Digest;
+    use std::ops::Mul;
+    use std::str::FromStr;
 
     #[test]
     pub fn fuel_ecrecover() {

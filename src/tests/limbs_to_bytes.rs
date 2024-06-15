@@ -1,6 +1,7 @@
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, execute_pipeline, finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_bytes_from_gpu,
+    get_device_and_queue,
 };
 use crate::shader::render_limbs_to_u32s_test;
 use crate::tests::get_secp256k1_b;
@@ -59,9 +60,13 @@ pub async fn do_test_limbs_le_to_bytes_be_shader(val: &BigUint, p: &BigUint, log
         1,
     );
 
-    let results =
-        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
-            .await;
+    let results = finish_encoder_and_read_bytes_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf],
+    )
+    .await;
 
     assert_eq!(results[0], val.to_bytes_be());
 }

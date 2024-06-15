@@ -6,6 +6,7 @@
 {% include "ed25519_constants.wgsl" %}
 {% include "ed25519_utils.wgsl" %}
 {% include "bytes_be_to_limbs_le.wgsl" %}
+{% include "limbs_le_to_u32s_be.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> compressed_y: array<u32, 16>;
 @group(0) @binding(1) var<storage, read_write> result: ETEPoint;

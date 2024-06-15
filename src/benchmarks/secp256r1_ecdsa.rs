@@ -1,8 +1,8 @@
 use fuel_crypto::secp256r1::p256::{recover, sign_prehashed};
 use fuel_crypto::Message;
-use p256::ecdsa::SigningKey;
 use fuel_types::Bytes64;
 use num_bigint::{BigUint, RandomBits};
+use p256::ecdsa::SigningKey;
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -25,7 +25,10 @@ pub async fn secp256r1_ecrecover_multiple_benchmarks() {
     }
 
     let table = crate::benchmarks::construct_table(data);
-    println!("secp256r1 signature verification benchmarks: \n{}\n\n", table);
+    println!(
+        "secp256r1 signature verification benchmarks: \n{}\n\n",
+        table
+    );
 }
 
 #[serial_test::serial]
@@ -37,15 +40,14 @@ pub async fn secp256r1_ecrecover_benchmarks() {
 
     let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
 
-    println!("CPU took {}ms to recover {} secp256r1 ECDSA signatures in serial.", cpu_ms, num_signatures);
+    println!(
+        "CPU took {}ms to recover {} secp256r1 ECDSA signatures in serial.",
+        cpu_ms, num_signatures
+    );
     println!("GPU took {}ms to recover {} secp256r1 ECDSA signatures in parallel (including data transfer cost).", gpu_ms, num_signatures);
 }
 
-pub async fn do_benchmark(
-    check: bool,
-    log_limb_size: u32,
-    num_signatures: usize,
-) -> (u32, u32) {
+pub async fn do_benchmark(check: bool, log_limb_size: u32, num_signatures: usize) -> (u32, u32) {
     let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
@@ -62,7 +64,8 @@ pub async fn do_benchmark(
         let verifying_key = signing_key.verifying_key();
 
         let pk_affine_bytes = &verifying_key.to_sec1_bytes()[1..65];
-        let fuel_signature: Bytes64 = sign_prehashed(&signing_key, &message).expect("Couldn't sign");
+        let fuel_signature: Bytes64 =
+            sign_prehashed(&signing_key, &message).expect("Couldn't sign");
 
         signatures.push(fuel_signature);
         messages.push(message);

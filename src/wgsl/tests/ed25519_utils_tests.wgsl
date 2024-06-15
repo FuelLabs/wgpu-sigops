@@ -5,6 +5,7 @@
 {% include "constants.wgsl" %}
 {% include "ed25519_constants.wgsl" %}
 {% include "ed25519_utils.wgsl" %}
+{% include "limbs_le_to_u32s_be.wgsl" %}
 
 @group(0) @binding(0) var<storage, read_write> a: BigInt;
 @group(0) @binding(1) var<storage, read_write> b: BigInt;

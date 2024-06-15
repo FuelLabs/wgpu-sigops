@@ -1,15 +1,17 @@
 #[cfg(test)]
 pub mod bigint_and_ff;
 #[cfg(test)]
-pub mod bytes_to_limbs;
+pub mod buffers;
 #[cfg(test)]
-pub mod limbs_to_bytes;
+pub mod bytes_to_limbs;
 #[cfg(test)]
 pub mod ed25519_curve;
 #[cfg(test)]
 pub mod ed25519_eddsa;
 #[cfg(test)]
 pub mod ed25519_reduce_fr;
+#[cfg(test)]
+pub mod limbs_to_bytes;
 #[cfg(test)]
 pub mod mont;
 #[cfg(test)]
@@ -22,12 +24,10 @@ pub mod secp256r1_curve;
 pub mod secp256r1_ecdsa;
 #[cfg(test)]
 pub mod sha512;
-#[cfg(test)]
-pub mod buffers;
 
+use crate::curve_algos::coords;
 use ark_ff::fields::PrimeField;
 use ark_ff::BigInteger;
-use crate::curve_algos::coords;
 use fuel_crypto::Signature;
 use multiprecision::bigint;
 use multiprecision::utils::calc_num_limbs;

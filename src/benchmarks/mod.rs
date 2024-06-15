@@ -1,16 +1,13 @@
 #[cfg(test)]
+pub mod ed25519_eddsa;
+#[cfg(test)]
 pub mod mont;
 #[cfg(test)]
 pub mod secp256k1_ecdsa;
 #[cfg(test)]
 pub mod secp256r1_ecdsa;
-#[cfg(test)]
-pub mod ed25519_eddsa;
 
-pub fn compute_num_workgroups(
-    num_threads: usize,
-    workgroup_size: usize,
-) -> (usize, usize, usize) {
+pub fn compute_num_workgroups(num_threads: usize, workgroup_size: usize) -> (usize, usize, usize) {
     assert!(num_threads <= 256 * 256 * 256 * 64);
     // Assume that num_threads and workgroup_size are powers of 2, the number of workgroups per
     // dimension are powers of 2, and that the maximum number of X and Y workgroups per dimension
@@ -45,7 +42,7 @@ pub fn compute_num_workgroups(
         1048576 => (256, 256, 16),
         2097152 => (256, 256, 32),
         4194304 => (256, 256, 64),
-        _ => unimplemented!()
+        _ => unimplemented!(),
     };
 
     assert_eq!(
@@ -64,9 +61,7 @@ pub fn test_compute_num_workgroups() {
     }
 }
 
-pub fn construct_table(
-    data: Vec<(usize, u32, u32)>,
-) -> String {
+pub fn construct_table(data: Vec<(usize, u32, u32)>) -> String {
     if data.len() == 0 {
         return String::from("No data.");
     }

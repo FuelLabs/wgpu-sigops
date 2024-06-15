@@ -1,8 +1,8 @@
 use crate::benchmarks::compute_num_workgroups;
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, execute_pipeline, finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
-    create_ub_with_data,
+    create_sb_with_data, create_ub_with_data, execute_pipeline,
+    finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
 };
 use crate::shader::render_ed25519_eddsa_tests;
 use ed25519_dalek::{Signature, VerifyingKey};
@@ -49,14 +49,19 @@ pub async fn ecverify(
     }
 
     let workgroup_size = 256;
-    let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = compute_num_workgroups(next_pow_2, workgroup_size);
+    let (num_x_workgroups, num_y_workgroups, num_z_workgroups) =
+        compute_num_workgroups(next_pow_2, workgroup_size);
 
     let all_sig_u32s: Vec<u32> = bytemuck::cast_slice(&all_sig_bytes).to_vec();
     let all_pk_u32s: Vec<u32> = bytemuck::cast_slice(&all_pk_bytes).to_vec();
     let all_msg_u32s: Vec<u32> = bytemuck::cast_slice(&all_msg_bytes).to_vec();
 
     let (device, queue) = get_device_and_queue().await;
-    let params = &[num_x_workgroups as u32, num_y_workgroups as u32, num_z_workgroups as u32];
+    let params = &[
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    ];
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let pk_buf = create_sb_with_data(&device, &all_pk_u32s);
@@ -85,9 +90,13 @@ pub async fn ecverify(
         num_z_workgroups as u32,
     );
 
-    let results =
-        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[is_valid_buf])
-            .await;
+    let results = finish_encoder_and_read_bytes_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[is_valid_buf],
+    )
+    .await;
 
     let mut all_is_valid: Vec<bool> = Vec::with_capacity(num_signatures);
     for i in 0..num_signatures {
@@ -96,4 +105,3 @@ pub async fn ecverify(
 
     all_is_valid
 }
-

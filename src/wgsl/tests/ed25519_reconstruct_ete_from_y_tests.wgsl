@@ -2,6 +2,7 @@
 {% include "ff.wgsl" %}
 {% include "mont.wgsl" %}
 {% include "ed25519_curve.wgsl" %}
+{% include "limbs_le_to_u32s_be.wgsl" %}
 {% include "constants.wgsl" %}
 {% include "ed25519_constants.wgsl" %}
 {% include "ed25519_utils.wgsl" %}

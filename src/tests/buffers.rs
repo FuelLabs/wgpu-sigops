@@ -2,8 +2,8 @@ use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
     create_sb_with_data, execute_pipeline, finish_encoder_and_read_from_gpu, get_device_and_queue,
 };
-use num_bigint::BigUint;
 use crate::shader::render_buffer_test;
+use num_bigint::BigUint;
 
 /// This test shows how to pass a slice of bytes to the GPU.
 /// 1. Convert it to a slice of u32s using bytemuck
@@ -22,7 +22,10 @@ pub async fn test_buffer() {
     assert_eq!(p_bytes.len(), 32);
     let p_u32s: Vec<u32> = bytemuck::cast_slice(&p_bytes).to_vec();
 
-    let expected: &[u32] = &[4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4278190079, 805109759];
+    let expected: &[u32] = &[
+        4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4294967295, 4278190079,
+        805109759,
+    ];
     assert_eq!(p_u32s, expected);
 
     let (device, queue) = get_device_and_queue().await;

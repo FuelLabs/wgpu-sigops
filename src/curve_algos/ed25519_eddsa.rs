@@ -1,17 +1,17 @@
-use num_bigint::BigUint;
-use ark_ff::{BigInteger, Field};
 use crate::curve_algos::coords::ETEProjective;
-use sha2::Digest;
-use ed25519_dalek::{VerifyingKey, Signature};
-use curve25519_dalek::Scalar;
+use ark_ec::twisted_edwards::TECurveConfig;
+use ark_ec::AffineRepr;
+use ark_ec::CurveGroup;
+use ark_ed25519::{EdwardsAffine, EdwardsConfig, Fq, Fr};
+use ark_ff::PrimeField;
+use ark_ff::{BigInteger, Field};
 use curve25519_dalek::edwards::CompressedEdwardsY;
 use curve25519_dalek::edwards::EdwardsPoint;
-use ark_ec::CurveGroup;
+use curve25519_dalek::Scalar;
+use ed25519_dalek::{Signature, VerifyingKey};
+use num_bigint::BigUint;
+use sha2::Digest;
 use std::ops::Neg;
-use ark_ec::AffineRepr;
-use ark_ec::twisted_edwards::TECurveConfig;
-use ark_ff::PrimeField;
-use ark_ed25519::{EdwardsAffine, EdwardsConfig, Fq, Fr};
 
 pub fn ark_ecverify(
     verifying_key: &VerifyingKey,
@@ -22,7 +22,7 @@ pub fn ark_ecverify(
     // verifying key = point A
     // k = hash(r, a, msg)
     // return sG - kA
-    // 
+    //
     // sG - kA should equal R.
     let s_bytes = signature.s_bytes();
     let a_bytes = verifying_key.as_bytes();
@@ -56,7 +56,10 @@ pub fn curve25519_ecverify(
 
     let hash = compute_hash(verifying_key, signature, message);
 
-    let a_pt = CompressedEdwardsY::from_slice(a_bytes).unwrap().decompress().unwrap();
+    let a_pt = CompressedEdwardsY::from_slice(a_bytes)
+        .unwrap()
+        .decompress()
+        .unwrap();
 
     let s = Scalar::from_bytes_mod_order(*s_bytes);
     let k = Scalar::from_bytes_mod_order_wide(hash.as_slice().try_into().unwrap());
@@ -65,14 +68,15 @@ pub fn curve25519_ecverify(
     let gs = g * s;
     let k_neg_a = k * (-a_pt);
 
-    let cd_recovered = EdwardsPoint::vartime_double_scalar_mul_basepoint(&k, &(-a_pt), &s).compress();
+    let cd_recovered =
+        EdwardsPoint::vartime_double_scalar_mul_basepoint(&k, &(-a_pt), &s).compress();
 
     assert_eq!((gs + k_neg_a).compress(), cd_recovered);
 
     Vec::<u8>::from(cd_recovered.to_bytes())
 }
 
-pub fn decompress_to_ete_unsafe(r_bytes: [u8; 32]) -> (bool, ETEProjective::<Fq>) {
+pub fn decompress_to_ete_unsafe(r_bytes: [u8; 32]) -> (bool, ETEProjective<Fq>) {
     let compressed_sign_bit = r_bytes[31] >> 7;
 
     let mut y_bytes = r_bytes;
@@ -93,7 +97,7 @@ pub fn decompress_to_ete_unsafe(r_bytes: [u8; 32]) -> (bool, ETEProjective::<Fq>
     (is_valid_y_coord, ETEProjective::<Fq> { x, y, t, z })
 }
 
-pub fn compressed_y_to_eteprojective(r_bytes: [u8; 32]) -> ETEProjective::<Fq> {
+pub fn compressed_y_to_eteprojective(r_bytes: [u8; 32]) -> ETEProjective<Fq> {
     let r = decompress_to_ete_unsafe(r_bytes);
     assert!(r.0);
     r.1
@@ -103,7 +107,7 @@ pub fn compute_hash(
     verifying_key: &VerifyingKey,
     signature: &Signature,
     message: &[u8],
-    ) -> Vec<u8> {
+) -> Vec<u8> {
     let r_bytes = signature.r_bytes();
     let a_bytes = verifying_key.as_bytes();
     let m_bytes = &message;
@@ -115,25 +119,16 @@ pub fn compute_hash(
     Vec::<u8>::from(result.as_slice())
 }
 
-
 pub fn compress_ark_projective(pt: EdwardsAffine) -> Vec<u8> {
     let mut y_bytes = pt.y.into_bigint().to_bytes_be();
-    let neg_bit = if is_negative(pt.x) {
-        1u8
-    } else {
-        0u8
-    };
+    let neg_bit = if is_negative(pt.x) { 1u8 } else { 0u8 };
 
     y_bytes[0] ^= neg_bit << 7u8;
 
     Vec::<u8>::from(y_bytes)
 }
 
-pub fn conditional_assign(
-    a: Fq,
-    b: Fq,
-    choice: bool
-    ) -> Fq {
+pub fn conditional_assign(a: Fq, b: Fq, choice: bool) -> Fq {
     if choice {
         return b;
     }
@@ -142,7 +137,11 @@ pub fn conditional_assign(
 
 pub fn pow_p58(a: Fq) -> Fq {
     // Raise this field element to the power (p-5)/8 = 2^252 -3.
-    let power = BigUint::parse_bytes(b"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd", 16).unwrap();
+    let power = BigUint::parse_bytes(
+        b"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd",
+        16,
+    )
+    .unwrap();
     a.pow(power.to_u64_digits())
 }
 
@@ -151,10 +150,7 @@ pub fn is_negative(a: Fq) -> bool {
     bytes[0] & 1u8 == 1u8
 }
 
-pub fn conditional_negate(
-    a: Fq,
-    choice: bool
-    ) -> Fq {
+pub fn conditional_negate(a: Fq, choice: bool) -> Fq {
     if choice {
         return -a;
     }
@@ -189,11 +185,13 @@ pub fn sqrt_ratio_i(u: &Fq, v: &Fq) -> (bool, Fq) {
 
 #[cfg(test)]
 pub mod tests {
-    use ed25519_dalek::{ SigningKey, Signature, Signer, Verifier };
+    use crate::curve_algos::ed25519_eddsa::{
+        ark_ecverify, compress_ark_projective, curve25519_ecverify,
+    };
+    use ed25519_dalek::{Signature, Signer, SigningKey, Verifier};
     use rand::RngCore;
     use rand_chacha::rand_core::SeedableRng;
     use rand_chacha::ChaCha8Rng;
-    use crate::curve_algos::ed25519_eddsa::{curve25519_ecverify, ark_ecverify, compress_ark_projective};
 
     // Lots of code in this file is ported from curve25519_dalek
     // Also ported from verify_strict():
@@ -216,7 +214,8 @@ pub mod tests {
 
             let cd_recovered_bytes = curve25519_ecverify(&verifying_key, &signature, &message);
 
-            let mut ark_recovered_bytes = compress_ark_projective(ark_ecverify(&verifying_key, &signature, &message));
+            let mut ark_recovered_bytes =
+                compress_ark_projective(ark_ecverify(&verifying_key, &signature, &message));
             ark_recovered_bytes.reverse();
 
             assert_eq!(ark_recovered_bytes, cd_recovered_bytes);

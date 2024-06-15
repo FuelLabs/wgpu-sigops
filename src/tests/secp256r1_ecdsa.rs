@@ -1,12 +1,13 @@
 use crate::gpu::{
     create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, execute_pipeline, finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
+    create_sb_with_data, execute_pipeline, finish_encoder_and_read_bytes_from_gpu,
+    get_device_and_queue,
 };
 use crate::shader::render_secp256r1_ecdsa_tests;
 use fuel_crypto::secp256r1::p256::{encode_pubkey, recover, sign_prehashed};
-use p256::ecdsa::SigningKey;
 use fuel_crypto::Message;
 use num_bigint::{BigUint, RandomBits};
+use p256::ecdsa::SigningKey;
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -87,9 +88,13 @@ pub async fn do_secp256r1_test(
         1,
     );
 
-    let results =
-        finish_encoder_and_read_bytes_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
-            .await;
+    let results = finish_encoder_and_read_bytes_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[result_buf],
+    )
+    .await;
 
     assert_eq!(results[0], pk_affine_bytes);
 }
