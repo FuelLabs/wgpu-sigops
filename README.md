@@ -15,6 +15,15 @@ cd wgpu_sig_ops &&
 cargo test -- --skip benchmarks
 ```
 
+## Usage
+
+See the following source files for examples on how to invoke the GPU shaders:
+
+- `src/benchmarks/secp256k1_ecdsa.rs`
+- `src/benchmarks/secp256r1_ecdsa.rs`
+- `src/benchmarks/ed25519_eddsa.rs`
+
+
 ## Overview
 
 This repository contains GPU shaders for the following cryptographic operations:
