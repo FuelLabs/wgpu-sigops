@@ -57,6 +57,29 @@ pub async fn projective_to_affine() {
 
 #[serial_test::serial]
 #[tokio::test]
+pub async fn projective_mul() {
+    let mut rng = ChaCha8Rng::seed_from_u64(2);
+    let g = Affine::generator();
+
+    for log_limb_size in 13..14 {
+        for _ in 0..1 {
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+            let pt: Affine = g.mul(s).into_affine();
+
+            do_projective_mul_test(
+                &pt,
+                log_limb_size,
+                "secp256r1_curve_tests.wgsl",
+                "test_projective_mul",
+            )
+            .await;
+        }
+    }
+}
+
+#[serial_test::serial]
+#[tokio::test]
 pub async fn projective_add_2015_rcb_unsafe() {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     for log_limb_size in 11..16 {
@@ -409,4 +432,69 @@ pub async fn do_projective_to_affine_test(
     assert_eq!(result_x, expected_affine.x);
     assert_eq!(result_y, expected_affine.y);
     assert_eq!(result_z, Fq::from(1u32));
+}
+
+pub async fn do_projective_mul_test(
+    pt: &Affine,
+    log_limb_size: u32,
+    filename: &str,
+    entrypoint: &str,
+) {
+    let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = mont::calc_mont_radix(num_limbs, log_limb_size);
+    let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
+    let rinv = res.0;
+
+    let pt_xyz = curve::affine_to_projectivexyz(pt);
+    let pt_limbs = projectivexyz_to_mont_limbs(&pt_xyz, &p, log_limb_size);
+
+    let s = Fr::from(-1i32);
+    let expected: Affine = pt.mul(s).into_affine();
+
+    let (device, queue) = get_device_and_queue().await;
+
+    let pt_a_buf = create_sb_with_data(&device, &pt_limbs);
+    let pt_b_buf = create_empty_sb(&device, pt_a_buf.size());
+    let result_buf = create_empty_sb(&device, pt_a_buf.size());
+
+    let source = render_secp256r1_curve_tests(filename, log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&pt_a_buf, &pt_b_buf, &result_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
+
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
+
+    let convert_result_coord = |data: &Vec<u32>| -> Fq {
+        let result = bigint::to_biguint_le(&data, num_limbs, log_limb_size);
+        let result = &result * &rinv % &p;
+        //let result = &result % &p;
+
+        Fq::from_be_bytes_mod_order(&result.to_bytes_be())
+    };
+
+    let result_x = convert_result_coord(&results[0][0..num_limbs].to_vec());
+    let result_y = convert_result_coord(&results[0][num_limbs..(num_limbs * 2)].to_vec());
+    let result_z = convert_result_coord(&results[0][(num_limbs * 2)..(num_limbs * 3)].to_vec());
+
+    let result_pt = curve::projectivexyz_to_affine(&coords::ProjectiveXYZ { x: result_x, y: result_y, z: result_z });
+    assert_eq!(result_pt, expected);
 }
