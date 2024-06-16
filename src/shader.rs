@@ -276,9 +276,9 @@ pub fn render_secp256k1_curve_tests(template_file: &str, log_limb_size: u32) -> 
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
 }
 
-pub fn render_secp256k1_ecdsa_tests(template_file: &str, log_limb_size: u32) -> String {
+pub fn render_secp256k1_ecdsa(template_file: &str, log_limb_size: u32) -> String {
     let template_path: &str = "src/wgsl/";
-    let tests_path: &str = "src/wgsl/tests";
+    let main_path: &str = "src/wgsl/main";
 
     let mut env = Environment::new();
 
@@ -298,7 +298,7 @@ pub fn render_secp256k1_ecdsa_tests(template_file: &str, log_limb_size: u32) -> 
     add_source_to_env(template_path, "secp256k1_curve_generators.wgsl", &mut env);
     add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
     add_source_to_env(template_path, "limbs_le_to_u32s_be.wgsl", &mut env);
-    add_source_to_env(tests_path, template_file, &mut env);
+    add_source_to_env(main_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
@@ -327,9 +327,9 @@ pub fn render_secp256r1_curve_tests(template_file: &str, log_limb_size: u32) -> 
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
 }
 
-pub fn render_secp256r1_ecdsa_tests(template_file: &str, log_limb_size: u32) -> String {
+pub fn render_secp256r1_ecdsa(template_file: &str, log_limb_size: u32) -> String {
     let template_path: &str = "src/wgsl/";
-    let tests_path: &str = "src/wgsl/tests";
+    let main_path: &str = "src/wgsl/main";
 
     let mut env = Environment::new();
 
@@ -349,7 +349,7 @@ pub fn render_secp256r1_ecdsa_tests(template_file: &str, log_limb_size: u32) -> 
     add_source_to_env(template_path, "secp256r1_curve_generators.wgsl", &mut env);
     add_source_to_env(template_path, "bytes_be_to_limbs_le.wgsl", &mut env);
     add_source_to_env(template_path, "limbs_le_to_u32s_be.wgsl", &mut env);
-    add_source_to_env(tests_path, template_file, &mut env);
+    add_source_to_env(main_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render(&p, &scalar_p, &b, log_limb_size, &template)
@@ -579,9 +579,9 @@ pub fn render_ed25519_utils_tests(template_file: &str, log_limb_size: u32) -> St
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)
 }
 
-pub fn render_ed25519_eddsa_tests(template_file: &str, log_limb_size: u32) -> String {
+pub fn render_ed25519_eddsa(template_file: &str, log_limb_size: u32) -> String {
     let template_path: &str = "src/wgsl/";
-    let tests_path: &str = "src/wgsl/tests";
+    let main_path: &str = "src/wgsl/main";
 
     let mut env = Environment::new();
 
@@ -601,7 +601,7 @@ pub fn render_ed25519_eddsa_tests(template_file: &str, log_limb_size: u32) -> St
     add_source_to_env(template_path, "limbs_le_to_u32s_be.wgsl", &mut env);
     add_source_to_env(template_path, "sha512.wgsl", &mut env);
     add_source_to_env(template_path, "ed25519_reduce_fr.wgsl", &mut env);
-    add_source_to_env(tests_path, template_file, &mut env);
+    add_source_to_env(main_path, template_file, &mut env);
 
     let template = env.get_template(template_file).unwrap();
     do_render_ed25519(&p, &scalar_p, &d2, log_limb_size, &template)

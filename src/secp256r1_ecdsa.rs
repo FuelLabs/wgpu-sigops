@@ -4,7 +4,7 @@ use crate::gpu::{
     create_sb_with_data, create_ub_with_data, execute_pipeline,
     finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
 };
-use crate::shader::render_secp256r1_ecdsa_tests;
+use crate::shader::render_secp256r1_ecdsa;
 use fuel_crypto::Message;
 use fuel_types::Bytes64;
 
@@ -57,7 +57,7 @@ pub async fn ecrecover(
     ];
 
     let (device, queue) = get_device_and_queue().await;
-    let source = render_secp256r1_ecdsa_tests("secp256r1_ecdsa_benchmarks.wgsl", log_limb_size);
+    let source = render_secp256r1_ecdsa("secp256r1_ecdsa_main.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_secp256r1_recover");
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);

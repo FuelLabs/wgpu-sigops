@@ -4,7 +4,7 @@ use crate::gpu::{
     create_sb_with_data, create_ub_with_data, execute_pipeline,
     finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
 };
-use crate::shader::render_ed25519_eddsa_tests;
+use crate::shader::render_ed25519_eddsa;
 use ed25519_dalek::{Signature, VerifyingKey};
 use fuel_crypto::Message;
 
@@ -69,7 +69,7 @@ pub async fn ecverify(
     let is_valid_buf = create_empty_sb(&device, (next_pow_2 * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
 
-    let source = render_ed25519_eddsa_tests("ed25519_eddsa_benchmarks.wgsl", log_limb_size);
+    let source = render_ed25519_eddsa("ed25519_eddsa_main.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_verify");
 
     let mut command_encoder = create_command_encoder(&device);

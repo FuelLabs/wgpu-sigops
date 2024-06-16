@@ -1,13 +1,9 @@
-use crate::gpu::{
-    create_bind_group, create_command_encoder, create_compute_pipeline, create_empty_sb,
-    create_sb_with_data, execute_pipeline, finish_encoder_and_read_bytes_from_gpu,
-    get_device_and_queue,
-};
-use crate::shader::render_secp256r1_ecdsa_tests;
+use crate::secp256r1_ecdsa::ecrecover;
 use fuel_crypto::secp256r1::p256::{encode_pubkey, recover, sign_prehashed};
 use fuel_crypto::Message;
 use num_bigint::{BigUint, RandomBits};
-use p256::ecdsa::SigningKey;
+use p256::ecdsa::{SigningKey, VerifyingKey};
+use fuel_types::Bytes64;
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -34,17 +30,11 @@ pub async fn test_secp256r1_ecrecover() {
 
             assert_eq!(*recovered, encode_pubkey(*verifying_key));
 
-            let msg_bytes = message.as_slice();
-            let sig_bytes = fuel_signature.as_slice();
-            let pk_affine_bytes = &verifying_key.to_sec1_bytes()[1..65];
-
             do_secp256r1_test(
-                &sig_bytes,
-                &msg_bytes,
-                pk_affine_bytes,
+                &fuel_signature,
+                &message,
+                &verifying_key,
                 log_limb_size,
-                "secp256r1_ecdsa_tests.wgsl",
-                "test_secp256r1_recover",
             )
             .await;
         }
@@ -52,49 +42,12 @@ pub async fn test_secp256r1_ecrecover() {
 }
 
 pub async fn do_secp256r1_test(
-    sig_bytes: &[u8],
-    msg_bytes: &[u8],
-    pk_affine_bytes: &[u8],
+    signature: &Bytes64,
+    message: &Message,
+    verifying_key: &VerifyingKey,
     log_limb_size: u32,
-    filename: &str,
-    entrypoint: &str,
 ) {
-    let (device, queue) = get_device_and_queue().await;
-    let source = render_secp256r1_ecdsa_tests(filename, log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
-
-    let sig_u32s: Vec<u32> = bytemuck::cast_slice(&sig_bytes).to_vec();
-    let msg_u32s: Vec<u32> = bytemuck::cast_slice(&msg_bytes).to_vec();
-
-    let sig_buf = create_sb_with_data(&device, &sig_u32s);
-    let msg_buf = create_sb_with_data(&device, &msg_u32s);
-    let result_buf = create_empty_sb(&device, (16 * std::mem::size_of::<u32>()) as u64);
-
-    let mut command_encoder = create_command_encoder(&device);
-
-    let bind_group = create_bind_group(
-        &device,
-        &compute_pipeline,
-        0,
-        &[&sig_buf, &msg_buf, &result_buf],
-    );
-
-    execute_pipeline(
-        &mut command_encoder,
-        &compute_pipeline,
-        &bind_group,
-        1,
-        1,
-        1,
-    );
-
-    let results = finish_encoder_and_read_bytes_from_gpu(
-        &device,
-        &queue,
-        Box::new(command_encoder),
-        &[result_buf],
-    )
-    .await;
-
-    assert_eq!(results[0], pk_affine_bytes);
+    let pk_affine_bytes = &verifying_key.to_sec1_bytes()[1..65];
+    let result = ecrecover(vec![*signature], vec![*message], log_limb_size).await;
+    assert_eq!(result[0], pk_affine_bytes);
 }

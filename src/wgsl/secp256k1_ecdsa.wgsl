@@ -38,7 +38,7 @@ fn secp256k1_ecrecover(
     var yr1 = yrs[1];
 
     var y0 = ff_mul(&yr0, rinv, p, p_wide, mu_fp);
-    var y1 = ff_mul(&yr1, rinv, p, p_wide, mu_fp);
+    /*var y1 = ff_mul(&yr1, rinv, p, p_wide, mu_fp);*/
 
     // TODO: could checking if yr_0 odd be optimised?
     var y0_is_odd = !bigint_is_even(&y0);
