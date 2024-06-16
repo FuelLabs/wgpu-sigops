@@ -24,6 +24,8 @@ pub mod secp256r1_curve;
 pub mod secp256r1_ecdsa;
 #[cfg(test)]
 pub mod sha512;
+#[cfg(test)]
+pub mod multi_stage;
 
 use crate::curve_algos::coords;
 use ark_ff::fields::PrimeField;

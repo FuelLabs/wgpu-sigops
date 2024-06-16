@@ -620,3 +620,15 @@ pub fn render_sha512_96_tests(template_file: &str) -> String {
     let template = env.get_template(template_file).unwrap();
     template.render(context).unwrap()
 }
+
+pub fn render_simple(template_file: &str) -> String {
+    let tests_path: &str = "src/wgsl/tests";
+
+    let mut env = Environment::new();
+
+    add_source_to_env(tests_path, template_file, &mut env);
+
+    let context = context! {};
+    let template = env.get_template(template_file).unwrap();
+    template.render(context).unwrap()
+}

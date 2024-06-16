@@ -20,8 +20,8 @@ cargo test -- --skip benchmarks
 ### Warmup
 
 Note that the first invocation of any GPU shader will take signficantly longer
-than subsequent invocations. Expect a 1-2 minute warmup period per shader,
-depending on your platform.
+than subsequent invocations. Expect a 1-2 minute warmup period per ECDSA or
+EdDSA shader, depending on your platform.
 
 ### secp256k1 and secp256r1 ECDSA signature recovery
 
