@@ -1,13 +1,13 @@
 {% include "bigint.wgsl" %}
 {% include "ff.wgsl" %}
 {% include "mont.wgsl" %}
-{% include "secp256k1_curve.wgsl" %}
+{% include "secp256r1_curve.wgsl" %}
 {% include "signature.wgsl" %}
-{% include "secp256k1_ecdsa.wgsl" %}
+{% include "secp256r1_ecdsa.wgsl" %}
 {% include "constants.wgsl" %}
 {% include "secp_constants.wgsl" %}
 {% include "secp_curve_utils.wgsl" %}
-{% include "secp256k1_curve_generators.wgsl" %}
+{% include "secp256r1_curve_generators.wgsl" %}
 {% include "bytes_be_to_limbs_le.wgsl" %}
 {% include "limbs_le_to_u32s_be.wgsl" %}
 
@@ -19,7 +19,7 @@
 
 @compute
 @workgroup_size(256)
-fn secp256k1_recover_3(@builtin(global_invocation_id) global_id: vec3<u32>) {
+fn secp256r1_recover_3(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let gidx = global_id.x; 
     let gidy = global_id.y; 
     let gidz = global_id.z; 
@@ -41,5 +41,5 @@ fn secp256k1_recover_3(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var u2r_pt = u2r[id];
 
     // Add u1g and u2r
-    sum[id] = projective_add_2007_bl_unsafe(&u1g_pt, &u2r_pt, &p);
+    sum[id] = projective_add_2015_rcb_unsafe(&u1g_pt, &u2r_pt, &p);
 }

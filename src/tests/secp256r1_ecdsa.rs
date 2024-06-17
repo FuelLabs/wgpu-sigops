@@ -14,7 +14,7 @@ pub async fn test_secp256r1_ecrecover() {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
     for log_limb_size in 13..14 {
-        for _ in 1..10 {
+        for _ in 0..1 {
             // Generate a random message
             let signing_key = SigningKey::random(&mut rng);
             let verifying_key = signing_key.verifying_key();

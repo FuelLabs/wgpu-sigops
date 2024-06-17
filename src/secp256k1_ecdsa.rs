@@ -7,14 +7,6 @@ use crate::gpu::{
 use crate::shader::render_secp256k1_ecdsa;
 use fuel_crypto::{Message, Signature};
 use multiprecision::utils::calc_num_limbs;
-use ark_secp256k1::{Affine, Fq};
-use crate::curve_algos::coords;
-use crate::curve_algos::secp256k1_curve as curve;
-
-pub fn projective_to_affine_func(x: Fq, y: Fq, z: Fq) -> Affine {
-    let p = coords::ProjectiveXYZ::<Fq> { x, y, z };
-    curve::projectivexyz_to_affine(&p)
-}
 
 pub async fn ecrecover(
     signatures: Vec<Signature>,

@@ -5,6 +5,7 @@ use crate::gpu::{
     finish_encoder_and_read_bytes_from_gpu, get_device_and_queue,
 };
 use crate::shader::render_secp256r1_ecdsa;
+use multiprecision::utils::calc_num_limbs;
 use fuel_crypto::Message;
 use fuel_types::Bytes64;
 
@@ -13,6 +14,8 @@ pub async fn ecrecover(
     messages: Vec<Message>,
     log_limb_size: u32,
 ) -> Vec<Vec<u8>> {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+
     let num_signatures = signatures.len();
     assert_eq!(num_signatures, messages.len());
     assert!(num_signatures <= 256 * 256 * 256 * 64);
@@ -57,24 +60,112 @@ pub async fn ecrecover(
     ];
 
     let (device, queue) = get_device_and_queue().await;
-    let source = render_secp256r1_ecdsa("secp256r1_ecdsa_main.wgsl", log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256r1_recover_main");
+    let mut command_encoder = create_command_encoder(&device);
+
+    // Stage 0
+    let source = render_secp256r1_ecdsa("secp256r1_ecdsa_main_0.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256r1_recover_0");
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
-    let result_buf = create_empty_sb(
-        &device,
-        (64 * next_pow_2 * std::mem::size_of::<u8>()) as u64,
-    );
+    let u1_buf = create_empty_sb(&device, (num_limbs * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let u2_buf = create_empty_sb(&device, (num_limbs * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let recovered_r_buf = create_empty_sb(&device, (num_limbs * 3 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
-
-    let mut command_encoder = create_command_encoder(&device);
 
     let bind_group = create_bind_group(
         &device,
         &compute_pipeline,
         0,
-        &[&sig_buf, &msg_buf, &result_buf, &params_buf],
+        &[&sig_buf, &msg_buf, &u1_buf, &u2_buf, &recovered_r_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 1
+    let source = render_secp256r1_ecdsa("secp256r1_ecdsa_main_1.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256r1_recover_1");
+
+    let u1g_buf = create_empty_sb(&device, (num_limbs * 3 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&u1_buf, &u1g_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 2
+    let source = render_secp256r1_ecdsa("secp256r1_ecdsa_main_2.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256r1_recover_2");
+
+    let u2r_buf = create_empty_sb(&device, (num_limbs * 3 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&u2_buf, &recovered_r_buf, &u2r_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 3
+    let source = render_secp256r1_ecdsa("secp256r1_ecdsa_main_3.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256r1_recover_3");
+
+    let sum_buf = create_empty_sb(&device, (num_limbs * 3 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&u1g_buf, &u2r_buf, &sum_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 4
+    let source = render_secp256r1_ecdsa("secp256r1_ecdsa_main_4.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256r1_recover_4");
+
+    let result_buf = create_empty_sb(&device, (64 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&sum_buf, &result_buf, &params_buf],
     );
 
     execute_pipeline(

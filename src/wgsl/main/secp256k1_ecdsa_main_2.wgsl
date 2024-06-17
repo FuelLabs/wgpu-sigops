@@ -30,6 +30,7 @@ fn secp256k1_recover_2(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var p = get_p();
     var recovered_r_pt = recovered_r[id];
 
+    // Multiply recovered_r by u2
     var u2_val = u2[id];
     u2r[id] = projective_mul(&recovered_r_pt, &u2_val, &p);
 }
