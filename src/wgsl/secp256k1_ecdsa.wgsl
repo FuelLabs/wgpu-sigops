@@ -1,4 +1,10 @@
-fn secp256k1_ecrecover(
+struct IntermediateResult {
+    u1: BigInt,
+    u2: BigInt,
+    recovered_r: Point
+}
+
+fn secp256k1_ecrecover_0(
     sig_r_bytes: ptr<function, array<u32, 32>>,
     sig_s_bytes: ptr<function, array<u32, 32>>,
     msg_bytes: ptr<function, array<u32, 32>>,
@@ -10,7 +16,7 @@ fn secp256k1_ecrecover(
     rinv: ptr<function, BigInt>,
     mu_fp: ptr<function, BigInt>,
     mu_fr: ptr<function, BigInt>,
-) -> Point {
+) -> IntermediateResult {
     var decoded = decode_signature(sig_s_bytes);
     var ds = decoded.sig;
     var is_y_odd = decoded.is_y_odd;
@@ -27,7 +33,7 @@ fn secp256k1_ecrecover(
     // TODO: check this
     if (bigint_is_zero(&sig_r)) {
         var z: BigInt;
-        return Point(z, z, z);
+        return IntermediateResult(z, z, Point(z, z, z));
     }
 
     var r_x = sig_r;
@@ -74,6 +80,40 @@ fn secp256k1_ecrecover(
 
     // compute u2 = r_inv * s;
     var u2 = ff_mul(&r_x_inv, &sig_s, scalar_p, scalar_p_wide, mu_fr);
+
+    return IntermediateResult(u1, u2, recovered_r);
+}
+
+fn secp256k1_ecrecover(
+    sig_r_bytes: ptr<function, array<u32, 32>>,
+    sig_s_bytes: ptr<function, array<u32, 32>>,
+    msg_bytes: ptr<function, array<u32, 32>>,
+    p: ptr<function, BigInt>,
+    p_wide: ptr<function, BigIntWide>,
+    scalar_p: ptr<function, BigInt>,
+    scalar_p_wide: ptr<function, BigIntWide>,
+    r: ptr<function, BigInt>,
+    rinv: ptr<function, BigInt>,
+    mu_fp: ptr<function, BigInt>,
+    mu_fr: ptr<function, BigInt>,
+) -> Point {
+    var ir = secp256k1_ecrecover_0(
+        sig_r_bytes,
+        sig_s_bytes,
+        msg_bytes,
+        p,
+        p_wide,
+        scalar_p,
+        scalar_p_wide,
+        r,
+        rinv,
+        mu_fp,
+        mu_fr,
+    );
+
+    var u1 = ir.u1;
+    var u2 = ir.u2;
+    var recovered_r = ir.recovered_r;
 
     var g = get_secp256k1_generator();
     var u1g = projective_mul(&g, &u1, p);

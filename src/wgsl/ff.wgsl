@@ -54,6 +54,7 @@ fn ff_sub(
 
   Note that x must not be in Montgomery form.
 
+  TODO: find out why this, when used, may cause the whole shader to silently fail
   TODO: find out why this fails if x == 0
 */
 fn ff_inverse(
@@ -64,6 +65,7 @@ fn ff_inverse(
     var b: BigInt;
     b.limbs[0] = 1u;
 
+    // u = x; v = p
     var u: BigInt;
     var v: BigInt;
     for (var i = 0u; i < {{ num_limbs }}u; i ++) {

@@ -17,7 +17,7 @@ pub async fn secp256k1_ecrecover_multiple_benchmarks() {
     for i in start..end {
         let num_signatures = 2u32.pow(i as u32) as usize;
         let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
-
+        //println!("i: {}; cpu: {}; gpu: {}", i, cpu_ms, gpu_ms);
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
 
@@ -57,7 +57,6 @@ pub async fn do_benchmark(check: bool, log_limb_size: u32, num_signatures: usize
         let message = Message::new(hex::encode(msg.to_bytes_be()));
         let secret = SecretKey::random(&mut rng);
         let pk = secret.public_key();
-
         let fuel_signature = Signature::sign(&secret, &message);
 
         signatures.push(fuel_signature);

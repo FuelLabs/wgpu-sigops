@@ -238,7 +238,6 @@ pub async fn do_add_test(
     let p = BigUint::from_bytes_be(&Fq::MODULUS.to_bytes_be());
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let r = mont::calc_mont_radix(num_limbs, log_limb_size);
-
     let res = mont::calc_rinv_and_n0(&p, &r, log_limb_size);
     let rinv = res.0;
 
