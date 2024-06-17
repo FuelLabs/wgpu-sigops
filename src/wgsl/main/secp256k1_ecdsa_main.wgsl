@@ -18,7 +18,7 @@
 
 @compute
 @workgroup_size(256)
-fn benchmark_secp256k1_recover(@builtin(global_invocation_id) global_id: vec3<u32>) {
+fn secp256k1_recover_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let gidx = global_id.x; 
     let gidy = global_id.y; 
     let gidz = global_id.z; 

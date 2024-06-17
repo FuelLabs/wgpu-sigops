@@ -70,7 +70,7 @@ pub async fn ecverify(
     let params_buf = create_ub_with_data(&device, params);
 
     let source = render_ed25519_eddsa("ed25519_eddsa_main.wgsl", log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_verify");
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main");
 
     let mut command_encoder = create_command_encoder(&device);
 

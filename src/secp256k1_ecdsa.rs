@@ -57,7 +57,7 @@ pub async fn ecrecover(
 
     let (device, queue) = get_device_and_queue().await;
     let source = render_secp256k1_ecdsa("secp256k1_ecdsa_main.wgsl", log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_secp256k1_recover");
+    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256k1_recover_main");
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);

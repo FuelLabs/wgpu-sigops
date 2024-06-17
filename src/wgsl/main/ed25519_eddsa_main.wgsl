@@ -19,7 +19,7 @@
 
 @compute
 @workgroup_size(256)
-fn benchmark_verify(@builtin(global_invocation_id) global_id: vec3<u32>) {
+fn ed25519_verify_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let gidx = global_id.x; 
     let gidy = global_id.y; 
     let gidz = global_id.z; 
