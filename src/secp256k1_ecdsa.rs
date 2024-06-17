@@ -56,24 +56,45 @@ pub async fn ecrecover(
     ];
 
     let (device, queue) = get_device_and_queue().await;
-    let source = render_secp256k1_ecdsa("secp256k1_ecdsa_main.wgsl", log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, "benchmark_secp256k1_recover");
+    let mut command_encoder = create_command_encoder(&device);
+
+    // Stage 0
+    let source = render_secp256k1_ecdsa("secp256k1_ecdsa_main_0.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256k1_recover_0");
 
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
-    let result_buf = create_empty_sb(
-        &device,
-        (64 * next_pow_2 * std::mem::size_of::<u8>()) as u64,
-    );
+    let r_buf = create_empty_sb(&device, (32 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let s_buf = create_empty_sb(&device, (32 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let msg_bytes_buf = create_empty_sb(&device, (32 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
-
-    let mut command_encoder = create_command_encoder(&device);
 
     let bind_group = create_bind_group(
         &device,
         &compute_pipeline,
         0,
-        &[&sig_buf, &msg_buf, &result_buf, &params_buf],
+        &[&sig_buf, &msg_buf, &r_buf, &s_buf, &msg_bytes_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+    // Stage 1
+    let source = render_secp256k1_ecdsa("secp256k1_ecdsa_main_1.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "secp256k1_recover_1");
+
+    let result_buf = create_empty_sb(&device, (64 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&r_buf, &s_buf, &msg_bytes_buf, &result_buf, &params_buf],
     );
 
     execute_pipeline(
@@ -99,4 +120,15 @@ pub async fn ecrecover(
         all_recovered.push(result_bytes.to_vec());
     }
     all_recovered
+    /*
+    let results = finish_encoder_and_read_bytes_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[r_buf],
+    )
+    .await;
+    println!("{:?}", results);
+    vec![]
+    */
 }
