@@ -172,6 +172,7 @@ To ensure a fair comparision, the CPU benchmarks use the same libraries that
   implementation of curve25519 and the ed25519 signature scheme.
 
 
+<!--
 #### Summary
 
 We found that the Nvidia A1000 GPU on a Linux machine performed consistently
@@ -191,6 +192,7 @@ shaders in production, we will implement the following two optimisations:
 
 - Precomputed lookup tables for scalar multiplication of the point generator
 - The GLV method for variable-base scalar multiplication
+-->
 
 #### Multiple-shader benchmarks
 
