@@ -218,7 +218,7 @@ secp256k1 signature recovery benchmarks (multiple shaders):
 | 65536              | 2033               | 933                |
 | 131072             | 4066               | 1695               |
 
-GPU timings include data transferj
+GPU timings include data transfer.
 
 secp256r1 signature verification benchmarks (multiple shaders): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
