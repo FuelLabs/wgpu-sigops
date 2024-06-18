@@ -1,3 +1,4 @@
+use crate::ed25519_eddsa::{ecverify, ecverify_single};
 use crate::curve_algos::ed25519_eddsa::{ark_ecverify, curve25519_ecverify};
 use ed25519_dalek::{Signature, Signer, SigningKey};
 use fuel_crypto::Message;
@@ -6,24 +7,43 @@ use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use stopwatch::Stopwatch;
 
+const START: usize = 10;
+const END: usize = 18;
+
 #[serial_test::serial]
 #[tokio::test]
 pub async fn ed25519_ecverify_multiple_benchmarks() {
     let check = false;
     let log_limb_size = 13u32;
-    let start = 10;
-    let end = 18;
 
-    let mut data = Vec::with_capacity(end - start);
-    for i in start..end {
+    let mut data = Vec::with_capacity(END - START);
+    for i in START..END {
         let num_signatures = 2u32.pow(i as u32) as usize;
-        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, false).await;
 
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
 
     let table = crate::benchmarks::construct_table(data);
-    println!("ed25519 signature verification benchmarks: \n{}\n\n", table);
+    println!("ed25519 signature verification benchmarks (multiple shaders): \n{}\n\n", table);
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn ed25519_ecverify_multiple_benchmarks_single() {
+    let check = false;
+    let log_limb_size = 13u32;
+
+    let mut data = Vec::with_capacity(END - START);
+    for i in START..END {
+        let num_signatures = 2u32.pow(i as u32) as usize;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, true).await;
+
+        data.push((num_signatures, cpu_ms, gpu_ms));
+    }
+
+    let table = crate::benchmarks::construct_table(data);
+    println!("ed25519 signature verification benchmarks (single shader): \n{}\n\n", table);
 }
 
 #[serial_test::serial]
@@ -33,7 +53,7 @@ pub async fn ed25519_ecverify_benchmarks() {
     let log_limb_size = 13u32;
     let num_signatures = 2u32.pow(13u32) as usize;
 
-    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
+    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, false).await;
 
     println!(
         "CPU took {}ms to recover {} ed25519 EdDSA signatures in serial.",
@@ -42,7 +62,28 @@ pub async fn ed25519_ecverify_benchmarks() {
     println!("GPU took {}ms to recover {} ed25519 EdDSA signatures in parallel (including data transfer cost).", gpu_ms, num_signatures);
 }
 
-pub async fn do_benchmark(check: bool, log_limb_size: u32, num_signatures: usize) -> (u32, u32) {
+#[serial_test::serial]
+#[tokio::test]
+pub async fn ed25519_ecverify_benchmarks_single() {
+    let check = true;
+    let log_limb_size = 13u32;
+    let num_signatures = 2u32.pow(13u32) as usize;
+
+    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, true).await;
+
+    println!(
+        "CPU took {}ms to recover {} ed25519 EdDSA signatures in serial.",
+        cpu_ms, num_signatures
+    );
+    println!("GPU took {}ms to recover {} ed25519 EdDSA signatures in parallel (including data transfer cost).", gpu_ms, num_signatures);
+}
+
+pub async fn do_benchmark(
+    check: bool,
+    log_limb_size: u32,
+    num_signatures: usize,
+    invoke_single: bool,
+) -> (u32, u32) {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
 
     let mut signatures = Vec::with_capacity(num_signatures);
@@ -78,8 +119,11 @@ pub async fn do_benchmark(check: bool, log_limb_size: u32, num_signatures: usize
 
     // Start the GPU stopwatch
     let sw = Stopwatch::start_new();
-    let all_is_valid =
-        crate::ed25519_eddsa::ecverify(signatures, messages, verifying_keys, log_limb_size).await;
+    let all_is_valid = if invoke_single {
+        ecverify_single(signatures, messages, verifying_keys, log_limb_size).await
+    } else {
+        ecverify(signatures, messages, verifying_keys, log_limb_size).await
+    };
     let gpu_ms = sw.elapsed_ms();
 
     if check {

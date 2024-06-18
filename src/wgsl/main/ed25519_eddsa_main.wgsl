@@ -93,7 +93,8 @@ fn ed25519_verify_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
 
     var compressed = compressed_sign_bit == 1u;
 
-    var result_affine = ed25519_verify(&s_val, &k_val, &ayr_val, compressed, &p, &p_wide, &rinv, &mu_fp);
+    var result_ete_pt = ed25519_verify(&s_val, &k_val, &ayr_val, compressed, &p, &p_wide, &rinv, &mu_fp);
+    var result_affine = ete_to_affine_non_mont(&result_ete_pt, &p, &p_wide, &r, &rinv, &mu_fp);
 
     var compressed_y_u32s = compress_eteaffine(&result_affine, {{ log_limb_size }}u);
 

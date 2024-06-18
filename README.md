@@ -20,8 +20,20 @@ cargo test -- --skip benchmarks
 ### Warmup
 
 Note that the first invocation of any GPU shader will take signficantly longer
-than subsequent invocations. Expect a 1-2 minute warmup period per ECDSA or
-EdDSA shader, depending on your platform.
+than subsequent invocations. Expect a 2-4 minute warmup period in total,
+depending on your platform.
+
+| Shader | Linux + Nvidia A1000 (seconds) | Macbook Pro (M1) (seconds) |
+|-|-|-|
+| secp256k1 ECDSA (single shader)    | 56  | |
+| secp256r1 ECDSA (single shader)    | 121 | |
+| ed25519 EdDSA (single shader)      | 52  | |
+| secp256k1 ECDSA (multiple shaders) | 30  | |
+| secp256r1 ECDSA (multiple shaders) | 77  | |
+| ed25519 EdDSA (multiple shaders)   | 56  | |
+
+See below for the a detaile discussion about the differences between the
+single-shader and multiple-shader approaches.
 
 ### secp256k1 and secp256r1 ECDSA signature recovery
 
@@ -151,53 +163,136 @@ To ensure a fair comparision, the CPU benchmarks use the same libraries that
 - [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek), a pure Rust
   implementation of curve25519 and the ed25519 signature scheme.
 
-Further optimisations may improve GPU performance, such as precomputation
-and/or the GLV method for scalar multiplication.
 
-secp256k1 signature recovery benchmarks: 
-| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms)
-| ------------------ | ------------------ | ------------------
-| 1024               | 32                 | 289                |
-| 2048               | 63                 | 173                |
-| 4096               | 127                | 170                |
-| 8192               | 254                | 232                |
-| 16384              | 508                | 347                |
-| 32768              | 1016               | 570                |
-| 65536              | 2033               | 926                |
-| 131072             | 4132               | 1706               |
+#### Summary
 
-GPU timings include data transfer.
+We found that the Nvidia A1000 GPU on a Linux machine performed consistently
+faster than the Macbook Pro (M1) on the multiple-shader approach.
 
-secp256r1 signature verification benchmarks: 
+With the single-shader approach, Nvidia A1000 GPU performed about the same as
+it did with the multiple-shader approach.
+
+Unfortunately, the Macbook Pro (M1) did not work with the single-shader
+approach at all.
+
+Finally, the warmup period for the Nvidia A1000 was signficantly faster for the
+multiple-shader approach compared to the single-shader approach.
+
+To attempt to make the Macbook Pro a viable platform for executing these
+shaders in production, we will implement the following two optimisations:
+
+- Precomputed lookup tables for scalar multiplication of the point generator
+- The GLV method for variable-base scalar multiplication
+
+#### Multiple-shader benchmarks
+
+To get the GPU shaders working on Macbook Pros with the M1 chip, it was
+necessary for us to implement the GPU code as multiple shaders. Otherwise, we
+ran into execution errors.
+
+Each shader would perform part of the computation while keeping the output in
+GPU memory. The final result would only be read from GPU memory once the
+sequence of shader execution is complete.
+
+##### Linux + Nvidia A1000
+
+secp256k1 signature recovery benchmarks (multiple shaders): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
-| 256                | 124                | 214                |
-| 512                | 250                | 247                |
-| 1024               | 499                | 171                |
-| 2048               | 999                | 185                |
-| 4096               | 1999               | 192                |
-| 8192               | 3998               | 321                |
-| 16384              | 8001               | 447                |
-| 32768              | 16007              | 650                |
-| 65536              | 32016              | 1017               |
-| 131072             | 63999              | 1866               |
+| 1024               | 32                 | 172                |
+| 2048               | 63                 | 156                |
+| 4096               | 127                | 158                |
+| 8192               | 254                | 219                |
+| 16384              | 509                | 338                |
+| 32768              | 1018               | 554                |
+| 65536              | 2033               | 933                |
+| 131072             | 4066               | 1695               |
 
-GPU timings include data transfer.
+GPU timings include data transferj
 
-ed25519 signature verification benchmarks: 
+secp256r1 signature verification benchmarks (multiple shaders): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
-| 1024               | 89                 | 435                |
-| 2048               | 178                | 323                |
-| 4096               | 357                | 425                |
-| 8192               | 866                | 722                |
-| 16384              | 1732               | 1401               |
-| 32768              | 2861               | 2586               |
-| 65536              | 7076               | 4836               |
-| 131072             | 11450              | 10340              |
+| 256                | 125                | 374                |
+| 512                | 250                | 168                |
+| 1024               | 500                | 196                |
+| 2048               | 1001               | 213                |
+| 4096               | 2007               | 194                |
+| 8192               | 4014               | 334                |
+| 16384              | 8015               | 449                |
+| 32768              | 16063              | 639                |
+| 65536              | 32088              | 1027               |
+| 131072             | 64125              | 1861               |
 
 GPU timings include data transfer.
 
+ed25519 signature verification benchmarks (multiple shaders): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 92                 | 333                |
+| 2048               | 181                | 328                |
+| 4096               | 363                | 413                |
+| 8192               | 955                | 8848               |
+| 16384              | 1752               | 3344               |
+| 32768              | 3506               | 2572               |
+| 65536              | 5818               | 4780               |
+| 131072             | 11623              | 10346              |
+
+GPU timings include data transfer.
+
+##### Macbook Pro (M1)
+
+(TODO)
+
+#### Single-shader benchmarks
+
+On the Linux machine with an Nvidia A1000 GPU, we found that performing the
+whole computation using a single shader had a very slight performance
+advantage over splitting up the computation into multiple shaders.
+
+##### Linux + Nvidia A1000
+
+secp256k1 signature recovery benchmarks (single shader): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 32                 | 257                |
+| 2048               | 64                 | 158                |
+| 4096               | 127                | 150                |
+| 8192               | 261                | 215                |
+| 16384              | 508                | 331                |
+| 32768              | 1018               | 549                |
+| 65536              | 2032               | 913                |
+| 131072             | 4065               | 1718               |
+
+secp256r1 signature verification benchmarks (single shader): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 256                | 126                | 164                |
+| 512                | 256                | 151                |
+| 1024               | 500                | 163                |
+| 2048               | 1002               | 179                |
+| 4096               | 2007               | 215                |
+| 8192               | 4005               | 360                |
+| 16384              | 8028               | 545                |
+| 32768              | 16059              | 898                |
+| 65536              | 32126              | 1542               |
+| 131072             | 64223              | 2926               |
+
+ed25519 signature verification benchmarks (single shader): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 109                | 376                |
+| 2048               | 181                | 276                |
+| 4096               | 449                | 364                |
+| 8192               | 726                | 657                |
+| 16384              | 1453               | 1253               |
+| 32768              | 3599               | 2379               |
+| 65536              | 5999               | 4400               |
+| 131072             | 11627              | 10663              |
+
+##### Macbook Pro (M1)
+
+(TODO)
 
 ### Montgomery multiplication benchmarks
 

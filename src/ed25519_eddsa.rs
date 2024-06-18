@@ -9,20 +9,18 @@ use ed25519_dalek::{Signature, VerifyingKey};
 use fuel_crypto::Message;
 use multiprecision::utils::calc_num_limbs;
 
-pub async fn ecverify(
-    signatures: Vec<Signature>,
-    messages: Vec<Message>,
-    verifying_keys: Vec<VerifyingKey>,
+pub fn init(
+    signatures: &Vec<Signature>,
+    messages: &Vec<Message>,
+    verifying_keys: &Vec<VerifyingKey>,
     log_limb_size: u32,
-) -> Vec<bool> {
+) ->
+    (usize, usize, usize, Vec<u32>, Vec<u32>, Vec<u32>, (u32, u32, u32))
+{
     let num_limbs = calc_num_limbs(log_limb_size, 256);
     let num_signatures = signatures.len();
     assert_eq!(num_signatures, messages.len());
     assert!(num_signatures <= 256 * 256 * 256 * 64);
-
-    if num_signatures == 0 {
-        return vec![];
-    }
 
     // Compute the next power of 2
     let next_pow_2 = (2u32.pow((num_signatures as f32).log2().ceil() as u32)) as usize;
@@ -55,17 +53,37 @@ pub async fn ecverify(
         compute_num_workgroups(next_pow_2, workgroup_size);
 
     let all_sig_u32s: Vec<u32> = bytemuck::cast_slice(&all_sig_bytes).to_vec();
-    let all_pk_u32s: Vec<u32> = bytemuck::cast_slice(&all_pk_bytes).to_vec();
     let all_msg_u32s: Vec<u32> = bytemuck::cast_slice(&all_msg_bytes).to_vec();
+    let all_pk_u32s: Vec<u32> = bytemuck::cast_slice(&all_pk_bytes).to_vec();
 
-    let (device, queue) = get_device_and_queue().await;
-    let mut command_encoder = create_command_encoder(&device);
+    let params = (
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+    (num_signatures, next_pow_2, num_limbs, all_sig_u32s, all_msg_u32s, all_pk_u32s, params)
+}
 
+pub async fn ecverify(
+    signatures: Vec<Signature>,
+    messages: Vec<Message>,
+    verifying_keys: Vec<VerifyingKey>,
+    log_limb_size: u32,
+) -> Vec<bool> {
+    let (num_signatures, next_pow_2, num_limbs, all_sig_u32s, all_msg_u32s, all_pk_u32s, params_t) = init(&signatures, &messages, &verifying_keys, log_limb_size);
+    let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = params_t;
     let params = &[
         num_x_workgroups as u32,
         num_y_workgroups as u32,
         num_z_workgroups as u32,
     ];
+
+    if num_signatures == 0 {
+        return vec![];
+    }
+
+    let (device, queue) = get_device_and_queue().await;
+    let mut command_encoder = create_command_encoder(&device);
 
     // Stage 0
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
@@ -217,6 +235,67 @@ pub async fn ecverify(
         &compute_pipeline,
         0,
         &[&pt_buf, &is_valid_buf, &sig_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    let results = finish_encoder_and_read_bytes_from_gpu(
+        &device,
+        &queue,
+        Box::new(command_encoder),
+        &[is_valid_buf],
+    )
+    .await;
+    let mut all_is_valid: Vec<bool> = Vec::with_capacity(num_signatures);
+    for i in 0..num_signatures {
+        all_is_valid.push(results[0][i * 4] == 1);
+    }
+
+    all_is_valid
+}
+
+pub async fn ecverify_single(
+    signatures: Vec<Signature>,
+    messages: Vec<Message>,
+    verifying_keys: Vec<VerifyingKey>,
+    log_limb_size: u32,
+) -> Vec<bool> {
+    let (num_signatures, next_pow_2, _num_limbs, all_sig_u32s, all_msg_u32s, all_pk_u32s, params_t) = init(&signatures, &messages, &verifying_keys, log_limb_size);
+    let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = params_t;
+    let params = &[
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    ];
+
+    if num_signatures == 0 {
+        return vec![];
+    }
+
+    let (device, queue) = get_device_and_queue().await;
+    let mut command_encoder = create_command_encoder(&device);
+
+    let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
+    let pk_buf = create_sb_with_data(&device, &all_pk_u32s);
+    let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
+    let is_valid_buf = create_empty_sb(&device, (next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let params_buf = create_ub_with_data(&device, params);
+
+    let source = render_ed25519_eddsa("ed25519_eddsa_main.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main");
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&sig_buf, &pk_buf, &msg_buf, &is_valid_buf, &params_buf],
     );
 
     execute_pipeline(

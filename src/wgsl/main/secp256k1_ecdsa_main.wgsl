@@ -27,6 +27,7 @@ fn secp256k1_recover_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let num_z_workgroups = params[2];
     let id = (gidx * num_y_workgroups + gidy) * num_z_workgroups + gidz;
 
+    // Copy sig_r to the stack
     var sig_r_u32s: array<u32, 16>;
     for (var i = 0u; i < 16u; i ++) {
         sig_r_u32s[i] = sig[id * 16u + i];
@@ -43,6 +44,7 @@ fn secp256k1_recover_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         }
     }
 
+    // Copy msg to the stack
     var msg_u32s: array<u32, 8>;
     for (var i = 0u; i < 8u; i ++) {
         msg_u32s[i] = msg[id * 8u + i];

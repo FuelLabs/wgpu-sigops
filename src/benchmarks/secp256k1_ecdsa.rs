@@ -1,3 +1,4 @@
+use crate::secp256k1_ecdsa::{ecrecover, ecrecover_single_shader};
 use fuel_crypto::{Message, SecretKey, Signature};
 use num_bigint::{BigUint, RandomBits};
 use rand::Rng;
@@ -5,35 +6,74 @@ use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use stopwatch::Stopwatch;
 
+const START: usize = 10;
+const END: usize = 18;
+
 #[serial_test::serial]
 #[tokio::test]
 pub async fn secp256k1_ecrecover_multiple_benchmarks() {
+    let log_limb_size = 13;
     let check = false;
-    let log_limb_size = 13u32;
-    let start = 10;
-    let end = 18;
 
-    let mut data = Vec::with_capacity(end - start);
-    for i in start..end {
+    let mut data = Vec::with_capacity(END - START);
+    for i in START..END {
         let num_signatures = 2u32.pow(i as u32) as usize;
-        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, false).await;
         //println!("i: {}; cpu: {}; gpu: {}", i, cpu_ms, gpu_ms);
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
 
     let table = crate::benchmarks::construct_table(data);
-    println!("secp256k1 signature recovery benchmarks: \n{}\n\n", table);
+    println!("secp256k1 signature recovery benchmarks (multiple shaders): \n{}\n\n", table);
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn secp256k1_ecrecover_multiple_benchmarks_single_shader() {
+    let log_limb_size = 13;
+    let check = false;
+
+    let mut data = Vec::with_capacity(END - START);
+    for i in START..END {
+        let num_signatures = 2u32.pow(i as u32) as usize;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, true).await;
+        //println!("i: {}; cpu: {}; gpu: {}", i, cpu_ms, gpu_ms);
+        data.push((num_signatures, cpu_ms, gpu_ms));
+    }
+
+    let table = crate::benchmarks::construct_table(data);
+    println!("secp256k1 signature recovery benchmarks (single shader): \n{}\n\n", table);
 }
 
 #[serial_test::serial]
 #[tokio::test]
 pub async fn secp256k1_ecrecover_benchmarks() {
+    let log_limb_size = 13;
     let check = true;
-    let log_limb_size = 13u32;
     let num_signatures = 2u32.pow(13u32) as usize;
     //let num_signatures = 255;
 
-    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures).await;
+    do_benchmarks(check, log_limb_size, num_signatures, false).await;
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn secp256k1_ecrecover_benchmarks_single_shader() {
+    let log_limb_size = 13;
+    let check = true;
+    let num_signatures = 2u32.pow(13u32) as usize;
+    //let num_signatures = 255;
+
+    do_benchmarks(check, log_limb_size, num_signatures, true).await;
+}
+
+pub async fn do_benchmarks(
+    check: bool,
+    log_limb_size: u32,
+    num_signatures: usize,
+    invoke_single: bool,
+) {
+    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, invoke_single).await;
 
     println!(
         "CPU took {}ms to recover {} secp256k1 ECDSA signatures in serial.",
@@ -42,7 +82,12 @@ pub async fn secp256k1_ecrecover_benchmarks() {
     println!("GPU took {}ms to recover {} secp256k1 ECDSA signatures in parallel (including data transfer cost).", gpu_ms, num_signatures);
 }
 
-pub async fn do_benchmark(check: bool, log_limb_size: u32, num_signatures: usize) -> (u32, u32) {
+pub async fn do_benchmark(
+    check: bool,
+    log_limb_size: u32,
+    num_signatures: usize,
+    invoke_single: bool,
+) -> (u32, u32) {
     let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
@@ -75,7 +120,11 @@ pub async fn do_benchmark(check: bool, log_limb_size: u32, num_signatures: usize
 
     // Perform signature recovery using the GPU
     let sw = Stopwatch::start_new();
-    let recovered = crate::secp256k1_ecdsa::ecrecover(signatures, messages, log_limb_size).await;
+    let recovered = if invoke_single {
+        ecrecover_single_shader(signatures, messages, log_limb_size).await
+    } else {
+        ecrecover(signatures, messages, log_limb_size).await
+    };
     let gpu_ms = sw.elapsed_ms();
 
     if check {
