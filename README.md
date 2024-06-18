@@ -184,16 +184,17 @@ secp256r1 signature verification benchmarks:
 
 GPU timings include data transfer.
 
+ed25519 signature verification benchmarks: 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
-| 1024               | 93                 | 382                |
-| 2048               | 187                | 284                |
-| 4096               | 374                | 389                |
-| 8192               | 750                | 719                |
-| 16384              | 1796               | 1469               |
-| 32768              | 3001               | 2560               |
-| 65536              | 6006               | 10199              |
-| 131072             | 12004              | 10211              |
+| 1024               | 89                 | 435                |
+| 2048               | 178                | 323                |
+| 4096               | 357                | 425                |
+| 8192               | 866                | 722                |
+| 16384              | 1732               | 1401               |
+| 32768              | 2861               | 2586               |
+| 65536              | 7076               | 4836               |
+| 131072             | 11450              | 10340              |
 
 GPU timings include data transfer.
 
