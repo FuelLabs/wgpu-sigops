@@ -41,7 +41,10 @@ To perform multiple secp256k1 / secp256r1 signature recovery operations in
 parallel, use `ecrecover()` in either `src/secp256k1_ecdsa.rs` or
 `src/secp256r1_ecdsa.rs` respectively.
 
-The function signature of `ecrecover` is:
+This function uses the multiple-shader approach. To use the single-shader
+approach, use `ecrecover_single` instead.
+
+The function signature of `ecrecover` or `ecrecover_single` is:
 
 ```rs
 pub async fn ecrecover(
@@ -68,6 +71,11 @@ representation of the affine public key per i-th recovery.
 
 To perform multiple ed25519 signature verification operations in
 parallel, use `ecverify()` in `src/ed25519_eddsa.rs`.
+
+This function uses the multiple-shader approach. To use the single-shader
+approach, use `ecverify_single` instead.
+
+The function signature of `ecverify` or `ecverify_single` is:
 
 ```rs
 pub async fn ecverify(
