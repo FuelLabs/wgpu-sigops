@@ -23,14 +23,14 @@ Note that the first invocation of any GPU shader will take signficantly longer
 than subsequent invocations. Expect a 2-4 minute warmup period in total,
 depending on your platform.
 
-| Shader | Linux + Nvidia A1000 (seconds) | Macbook Pro (M1) (seconds) |
+| Shader | Linux + Nvidia A1000 (seconds) | Macbook Pro (M2) (seconds) |
 |-|-|-|
-| secp256k1 ECDSA (single shader)    | 56  | |
-| secp256r1 ECDSA (single shader)    | 121 | |
-| ed25519 EdDSA (single shader)      | 52  | |
-| secp256k1 ECDSA (multiple shaders) | 30  | |
-| secp256r1 ECDSA (multiple shaders) | 77  | |
-| ed25519 EdDSA (multiple shaders)   | 56  | |
+| secp256k1 ECDSA (single shader)    | 56  | TBC |
+| secp256r1 ECDSA (single shader)    | 121 | TBC |
+| ed25519 EdDSA (single shader)      | 52  | TBC |
+| secp256k1 ECDSA (multiple shaders) | 30  | TBC |
+| secp256r1 ECDSA (multiple shaders) | 77  | TBC |
+| ed25519 EdDSA (multiple shaders)   | 56  | TBC |
 
 See below for the a detaile discussion about the differences between the
 single-shader and multiple-shader approaches.
@@ -176,12 +176,12 @@ To ensure a fair comparision, the CPU benchmarks use the same libraries that
 #### Summary
 
 We found that the Nvidia A1000 GPU on a Linux machine performed consistently
-faster than the Macbook Pro (M1) on the multiple-shader approach.
+faster than the Macbook Pro (M2) on the multiple-shader approach.
 
 With the single-shader approach, Nvidia A1000 GPU performed about the same as
 it did with the multiple-shader approach.
 
-Unfortunately, the Macbook Pro (M1) did not work with the single-shader
+Unfortunately, the Macbook Pro (M1 and M2) did not work with the single-shader
 approach at all.
 
 Finally, the warmup period for the Nvidia A1000 was signficantly faster for the
@@ -196,7 +196,7 @@ shaders in production, we will implement the following two optimisations:
 
 #### Multiple-shader benchmarks
 
-To get the GPU shaders working on Macbook Pros with the M1 chip, it was
+To get the GPU shaders working on Macbook Pros with the M2 chip, it was
 necessary for us to implement the GPU code as multiple shaders. Otherwise, we
 ran into execution errors.
 
@@ -218,7 +218,7 @@ secp256k1 signature recovery benchmarks (multiple shaders):
 | 65536              | 2033               | 933                |
 | 131072             | 4066               | 1695               |
 
-GPU timings include data transferj
+GPU timings include data transfer.
 
 secp256r1 signature verification benchmarks (multiple shaders): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
@@ -250,9 +250,47 @@ ed25519 signature verification benchmarks (multiple shaders):
 
 GPU timings include data transfer.
 
-##### Macbook Pro (M1)
+##### Macbook Pro (M2)
 
-(TODO)
+secp256k1 signature recovery benchmarks: 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 30                 | 918                |
+| 2048               | 55                 | 939                |
+| 4096               | 110                | 1879               |
+| 8192               | 221                | 3632               |
+| 16384              | 453                | 5885               |
+| 32768              | 909                | 10021              |
+| 65536              | 1826               | 10027              |
+| 131072             | 3611               | 10045              |
+
+secp256r1 signature verification benchmarks (multiple shaders): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 256                | 115                | 1007               |
+| 512                | 230                | 1061               |
+| 1024               | 461                | 1143               |
+| 2048               | 923                | 1238               |
+| 4096               | 1842               | 2375               |
+| 8192               | 3686               | 4176               |
+| 16384              | 7390               | 8575               |
+| 32768              | 15165              | 10023              |
+| 65536              | 30358              | 10023              |
+| 131072             | 60801              | 10034              |
+
+GPU timings include data transfer.
+
+ed25519 signature verification benchmarks (multiple shaders): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 88                 | 7408               |
+| 2048               | 178                | 651                |
+| 4096               | 360                | 688                |
+| 8192               | 711                | 2049               |
+| 16384              | 1508               | 2330               |
+| 32768              | 2938               | 5931               |
+| 65536              | 5848               | 10032              |
+| 131072             | 11809              | 10035              |
 
 #### Single-shader benchmarks
 
@@ -300,9 +338,9 @@ ed25519 signature verification benchmarks (single shader):
 | 65536              | 5999               | 4400               |
 | 131072             | 11627              | 10663              |
 
-##### Macbook Pro (M1)
+##### Macbook Pro (M2)
 
-(TODO)
+Failed to run (`Compute function exceeds available stack space`).
 
 ### Montgomery multiplication benchmarks
 
