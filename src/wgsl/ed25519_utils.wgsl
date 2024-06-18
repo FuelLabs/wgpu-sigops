@@ -108,8 +108,6 @@ fn reconstruct_ete_from_y(
     var v = ff_add(&yyd, &zr, p);
 
     var r = sqrt_ratio_i(&u, &v, p);
-    /* TODO: assert!(r.was_nonzero_square);*/
-    // Should return 0 if this is false
 
     var xr = r.r;
     xr = conditional_negate(&xr, p, is_compressed);

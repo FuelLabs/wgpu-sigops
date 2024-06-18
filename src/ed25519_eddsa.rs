@@ -7,6 +7,7 @@ use crate::gpu::{
 use crate::shader::render_ed25519_eddsa;
 use ed25519_dalek::{Signature, VerifyingKey};
 use fuel_crypto::Message;
+use multiprecision::utils::calc_num_limbs;
 
 pub async fn ecverify(
     signatures: Vec<Signature>,
@@ -14,6 +15,7 @@ pub async fn ecverify(
     verifying_keys: Vec<VerifyingKey>,
     log_limb_size: u32,
 ) -> Vec<bool> {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
     let num_signatures = signatures.len();
     assert_eq!(num_signatures, messages.len());
     assert!(num_signatures <= 256 * 256 * 256 * 64);
@@ -57,28 +59,164 @@ pub async fn ecverify(
     let all_msg_u32s: Vec<u32> = bytemuck::cast_slice(&all_msg_bytes).to_vec();
 
     let (device, queue) = get_device_and_queue().await;
+    let mut command_encoder = create_command_encoder(&device);
+
     let params = &[
         num_x_workgroups as u32,
         num_y_workgroups as u32,
         num_z_workgroups as u32,
     ];
 
+    // Stage 0
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let pk_buf = create_sb_with_data(&device, &all_pk_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
-    let is_valid_buf = create_empty_sb(&device, (next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let s_buf = create_empty_sb(&device, (next_pow_2 * num_limbs * std::mem::size_of::<u32>()) as u64);
+    let ayr_buf = create_empty_sb(&device, (next_pow_2 * num_limbs * std::mem::size_of::<u32>()) as u64);
+    let preimage_buf = create_empty_sb(&device, (next_pow_2 * 24 * std::mem::size_of::<u32>()) as u64);
+    let compressed_sign_bit_buf = create_empty_sb(&device, (next_pow_2 * std::mem::size_of::<u32>()) as u64);
     let params_buf = create_ub_with_data(&device, params);
 
-    let source = render_ed25519_eddsa("ed25519_eddsa_main.wgsl", log_limb_size);
-    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main");
-
-    let mut command_encoder = create_command_encoder(&device);
+    let source = render_ed25519_eddsa("ed25519_eddsa_main_0.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_0");
 
     let bind_group = create_bind_group(
         &device,
         &compute_pipeline,
         0,
-        &[&sig_buf, &pk_buf, &msg_buf, &is_valid_buf, &params_buf],
+        &[&sig_buf, &pk_buf, &msg_buf, &s_buf, &ayr_buf, &preimage_buf, &compressed_sign_bit_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 1
+    let source = render_ed25519_eddsa("ed25519_eddsa_main_1.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_1");
+
+    let k_buf = create_empty_sb(&device, (next_pow_2 * num_limbs * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&preimage_buf, &k_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 2
+    let source = render_ed25519_eddsa("ed25519_eddsa_main_2.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_2");
+
+    let result_ete_buf = create_empty_sb(&device, (next_pow_2 * num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&s_buf, &ayr_buf, &k_buf, &compressed_sign_bit_buf, &result_ete_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 3
+    let source = render_ed25519_eddsa("ed25519_eddsa_main_3.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_3");
+
+    let gs_buf = create_empty_sb(&device, (next_pow_2 * num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&s_buf, &ayr_buf, &k_buf, &compressed_sign_bit_buf, &gs_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 4
+    let source = render_ed25519_eddsa("ed25519_eddsa_main_4.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_4");
+
+    let neg_ak_buf = create_empty_sb(&device, (next_pow_2 * num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&s_buf, &ayr_buf, &k_buf, &compressed_sign_bit_buf, &neg_ak_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 5
+    let source = render_ed25519_eddsa("ed25519_eddsa_main_5.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_5");
+
+    let pt_buf = create_empty_sb(&device, (next_pow_2 * num_limbs * 2 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&gs_buf, &neg_ak_buf, &pt_buf, &params_buf],
+    );
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        num_x_workgroups as u32,
+        num_y_workgroups as u32,
+        num_z_workgroups as u32,
+    );
+
+    // Stage 6
+    let source = render_ed25519_eddsa("ed25519_eddsa_main_6.wgsl", log_limb_size);
+    let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_6");
+
+    let is_valid_buf = create_empty_sb(&device, (next_pow_2 * std::mem::size_of::<u32>()) as u64);
+
+    let bind_group = create_bind_group(
+        &device,
+        &compute_pipeline,
+        0,
+        &[&pt_buf, &is_valid_buf, &sig_buf, &params_buf],
     );
 
     execute_pipeline(
@@ -97,7 +235,6 @@ pub async fn ecverify(
         &[is_valid_buf],
     )
     .await;
-
     let mut all_is_valid: Vec<bool> = Vec::with_capacity(num_signatures);
     for i in 0..num_signatures {
         all_is_valid.push(results[0][i * 4] == 1);

@@ -18,17 +18,9 @@ fn get_edwards_dr() -> BigInt {
     return edwards_dr;
 }
 
-fn get_ed25519_generator_xr() -> BigInt {
+fn get_ed25519_generator() -> ETEPoint {
     {{ ed25519_generator_xr_bigint }}
-    return ed25519_generator_xr;
-}
-
-fn get_ed25519_generator_yr() -> BigInt {
     {{ ed25519_generator_yr_bigint }}
-    return ed25519_generator_yr;
-}
-
-fn get_ed25519_generator_tr() -> BigInt {
     {{ ed25519_generator_tr_bigint }}
-    return ed25519_generator_tr;
+    return ETEPoint(ed25519_generator_xr, ed25519_generator_yr, ed25519_generator_tr, get_r());
 }
