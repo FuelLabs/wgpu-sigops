@@ -13,8 +13,8 @@ fn projective_to_affine_non_mont(
     var x = ff_mul(&xr, rinv, p, p_wide, mu_fp);
     var y = ff_mul(&yr, rinv, p, p_wide, mu_fp);
 
-    var two: BigInt; two.limbs[0] = 2u;
-    var exponent = bigint_sub(p, &two);
+    var exponent = *p;
+    exponent.limbs[0] -= 2u;
     var z_inv_r = modpow(&zr, r, &exponent, p);
 
     var z_inv = ff_mul(&z_inv_r, rinv, p, p_wide, mu_fp);
