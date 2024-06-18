@@ -206,3 +206,16 @@ These benchmarks can help select the best choice of limb size for different plat
 ```bash
 cargo test mont_mul_benchmarks -- --nocapture
 ```
+
+## Troubleshooting
+
+### If shaders aren't cached
+
+The second and subsequent runs of any shader should always be much faster than
+the first run, because the GPU backend will compile and cache it. In some
+cases, this may not be the case, leading to consistently slow runs for no
+apparent reason. To address the issue, consider deleting the shader cache on
+your system.
+
+On Linux machines with Nvidia GPUs, the cache may be located at
+`~/.cache/nvidia/GLCache/`.
