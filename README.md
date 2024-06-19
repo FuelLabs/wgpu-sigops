@@ -105,7 +105,7 @@ This repository contains GPU shaders for the following cryptographic operations:
 
 - secp256k1 ECDSA signature recovery
 - secp256r1 ECDSA signature recovery
-- curve25519 EdDSA signature verification
+- ed25519 EdDSA signature verification
 
 These shaders are written to mirror the same underlying algorithms and code
 that Fuel nodes use.
@@ -135,7 +135,7 @@ the shader is checked against the output of the relevant ECDSA signature
 recovery function from the
 [`fuel-crypto`](https://crates.io/crates/fuel-crypto) library.
 
-Of particular note is that the curve25519 EdDSA signature verification shader follows the
+Of particular note is that the ed25519 EdDSA signature verification shader follows the
 [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek) implementation of
 EdDSA. This is important because [not all EdDSA implementations are the
 same](https://hdevalence.ca/blog/2020-10-04-its-25519am), and nodes must run
