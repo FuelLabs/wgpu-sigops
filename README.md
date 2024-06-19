@@ -280,6 +280,7 @@ secp256r1 signature verification benchmarks (multiple shaders):
 GPU timings include data transfer.
 
 ed25519 signature verification benchmarks (multiple shaders): 
+
 TBC
 
 ### Per-shader performance
@@ -355,14 +356,14 @@ secp256r1 signature verification benchmarks (single shader):
 ed25519 signature verification benchmarks (single shader): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
-| 1024               | 109                | 376                |
-| 2048               | 181                | 276                |
-| 4096               | 449                | 364                |
-| 8192               | 726                | 657                |
-| 16384              | 1453               | 1253               |
-| 32768              | 3599               | 2379               |
-| 65536              | 5999               | 4400               |
-| 131072             | 11627              | 10663              |
+| 1024               | 90                 | 531                |
+| 2048               | 181                | 428                |
+| 4096               | 362                | 586                |
+| 8192               | 724                | 1148               |
+| 16384              | 1448               | 2318               |
+| 32768              | 3469               | 4320               |
+| 65536              | 5797               | 10199              |
+| 131072             | 11591              | 10268              |
 
 ##### Macbook Pro (M2)
 
