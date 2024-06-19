@@ -14,7 +14,7 @@ const END: usize = 18;
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn secp256r1_ecrecover_multiple_benchmarks() {
+pub async fn secp256r1_ecrecover_multiple_benchmarks_multi_shader() {
     let check = false;
     let log_limb_size = 13u32;
 
@@ -35,7 +35,7 @@ pub async fn secp256r1_ecrecover_multiple_benchmarks() {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn secp256r1_ecrecover_multiple_benchmarks_single() {
+pub async fn secp256r1_ecrecover_multiple_benchmarks_single_shader() {
     let check = false;
     let log_limb_size = 13u32;
 
@@ -56,7 +56,7 @@ pub async fn secp256r1_ecrecover_multiple_benchmarks_single() {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn secp256r1_ecrecover_benchmarks() {
+pub async fn secp256r1_ecrecover_benchmarks_multi_shader() {
     let check = true;
     let log_limb_size = 13u32;
     let num_signatures = 2u32.pow(13u32) as usize;
@@ -72,7 +72,7 @@ pub async fn secp256r1_ecrecover_benchmarks() {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn secp256r1_ecrecover_benchmarks_single() {
+pub async fn secp256r1_ecrecover_benchmarks_single_shader() {
     let check = true;
     let log_limb_size = 13u32;
     let num_signatures = 2u32.pow(13u32) as usize;

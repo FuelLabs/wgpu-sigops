@@ -12,7 +12,7 @@ const END: usize = 18;
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn ed25519_ecverify_multiple_benchmarks_multi() {
+pub async fn ed25519_ecverify_multiple_benchmarks_multi_shader() {
     let check = false;
     let log_limb_size = 13u32;
 
@@ -30,7 +30,7 @@ pub async fn ed25519_ecverify_multiple_benchmarks_multi() {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn ed25519_ecverify_multiple_benchmarks_single() {
+pub async fn ed25519_ecverify_multiple_benchmarks_single_shader() {
     let check = false;
     let log_limb_size = 13u32;
 
@@ -48,7 +48,7 @@ pub async fn ed25519_ecverify_multiple_benchmarks_single() {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn ed25519_ecverify_benchmarks() {
+pub async fn ed25519_ecverify_benchmarks_multi_shader() {
     let check = true;
     let log_limb_size = 13u32;
     let num_signatures = 2u32.pow(13u32) as usize;
