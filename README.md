@@ -88,7 +88,7 @@ pub async fn ecverify(
 
 `Signature` is from [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek).
 `Message` and `VerifyingKey` are from
-`fuel-crypto`](https://crates.io/crates/fuel-crypto).
+[`fuel-crypto`](https://crates.io/crates/fuel-crypto).
 
 The output is a `Vec` of booleans which correspond to `true` if the i-th
 recovery is valid, and `false` otherwise.
