@@ -30,7 +30,7 @@ depending on your platform.
 | ed25519 EdDSA (single shader)      | 52  | TBC |
 | secp256k1 ECDSA (multiple shaders) | 30  | TBC |
 | secp256r1 ECDSA (multiple shaders) | 77  | TBC |
-| ed25519 EdDSA (multiple shaders)   | 56  | TBC |
+| ed25519 EdDSA (multiple shaders)   | 28  | TBC |
 
 See below for the a detaile discussion about the differences between the
 single-shader and multiple-shader approaches.
@@ -60,9 +60,7 @@ pub async fn ecrecover(
 The length of `signatures` and `messages` should be the same.
 
 `log_limb_size` indicates the bitwidth of each limb in the shaders'
-representation of big integers. It should be set either 13 or 14. The resulting
-performance of using either value depends on the platform on which the code
-will run, but our benchmarks show no significant performance difference.
+representation of big integers. A safe default is 13.
 
 The output is a `Vec` of byte-vectors which correspond to the big-integer byte
 representation of the affine public key per i-th recovery.
@@ -154,8 +152,9 @@ cargo test --release multiple_benchmarks -- --nocapture
 The following benchmarks were run on a 13th Gen Intel(R) Core(TM) i7-13700HX
 machine with an [Nvidia RTX
 A1000](https://www.notebookcheck.net/NVIDIA-RTX-A1000-Laptop-GPU-GPU-Benchmarks-and-Specs.615862.0.html)
-graphics card (2560 cores). The CPU benchmarks were run with the `--release`
-flag, and the GPU timings include data transfer both ways.
+graphics card (2560 cores), as well as a Macbook Pro (M2). The CPU benchmarks
+were run with the `--release` flag, and the GPU timings include data transfer
+both ways.
 
 For each benchmark, each signature is handled in parallel by the GPU, while the
 CPU handles it serially. The results show that after a certain number of
@@ -239,14 +238,14 @@ GPU timings include data transfer.
 ed25519 signature verification benchmarks (multiple shaders): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
-| 1024               | 92                 | 333                |
-| 2048               | 181                | 328                |
-| 4096               | 363                | 413                |
-| 8192               | 955                | 8848               |
-| 16384              | 1752               | 3344               |
-| 32768              | 3506               | 2572               |
-| 65536              | 5818               | 4780               |
-| 131072             | 11623              | 10346              |
+| 1024               | 90                 | 177                |
+| 2048               | 222                | 152                |
+| 4096               | 362                | 156                |
+| 8192               | 724                | 211                |
+| 16384              | 1734               | 281                |
+| 32768              | 3468               | 490                |
+| 65536              | 5797               | 740                |
+| 131072             | 11593              | 1237               |
 
 GPU timings include data transfer.
 
@@ -281,16 +280,43 @@ secp256r1 signature verification benchmarks (multiple shaders):
 GPU timings include data transfer.
 
 ed25519 signature verification benchmarks (multiple shaders): 
-| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
-| ------------------ | ------------------ | ------------------ |
-| 1024               | 88                 | 7408               |
-| 2048               | 178                | 651                |
-| 4096               | 360                | 688                |
-| 8192               | 711                | 2049               |
-| 16384              | 1508               | 2330               |
-| 32768              | 2938               | 5931               |
-| 65536              | 5848               | 10032              |
-| 131072             | 11809              | 10035              |
+TBC
+
+### Per-shader performance
+
+With 2 signatures in parallel, the following measurements are for the
+*cumulative* runtime up to the respective shader, including data transfer both ways.
+
+secp256k1 ECDSA: 
+
+| Shader # | Description | Linux + Nvidia A1000 (ms) | Macbook Pro (M2) |
+|-|-|-|-|
+| 0 | Compute `u1`, `u2`, and `R`   | 117, 154, 121 | TBC |
+| 1 | `u1 * G`                      | 141, 141, 141 | TBC |
+| 2 | `u2 * R`                      | 169, 171, 169 | TBC |
+| 3 | `u1G + u2R`                   | 177, 181, 173 | TBC |
+| 4 | `convert to affine and bytes` | 173, 184, 182 | TBC |
+
+secp256r1 ECDSA: 
+
+| Shader # | Description | Linux + Nvidia A1000 (ms) | Macbook Pro (M2) |
+|-|-|-|-|
+| 0 | Compute `u1`, `u2`, and `R`   | 120, 131, 146 | TBC |
+| 1 | `u1 * G`                      | 162, 153, 156 | TBC |
+| 2 | `u2 * R`                      | 176, 177, 193 | TBC |
+| 3 | `u1G + u2R`                   | 172, 199, 185 | TBC |
+| 4 | `convert to affine and bytes` | 189, 204, 196 | TBC |
+
+ed25519 EdDSA:
+
+| Shader # | Description | Linux + Nvidia A1000 (ms) | Macbook Pro (M2) |
+|-|-|-|-|
+| 0 | Misc. byte conversion           | 106, 104, 116 | TBC |
+| 1 | SHA512 |                        | 109, 108, 123 | TBC |
+| 2 | `s * G` |                       | 141, 134, 140 | TBC |
+| 3 | `k * -A |                       | 165, 165, 163 | TBC |
+| 4 | add point and convert to affine | 168, 170, 172 | TBC |
+| 5 | compress point                  | 209, 175, 185 | TBC |
 
 #### Single-shader benchmarks
 

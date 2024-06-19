@@ -11,9 +11,9 @@
 {% include "sha512.wgsl" %}
 {% include "ed25519_reduce_fr.wgsl" %}
 
-@group(0) @binding(0) var<storage, read_write> gs: array<ETEPoint>;
-@group(0) @binding(1) var<storage, read_write> neg_ak: array<ETEPoint>;
-@group(0) @binding(2) var<storage, read_write> pt: array<ETEAffinePoint>;
+@group(0) @binding(0) var<storage, read_write> pt: array<ETEAffinePoint>;
+@group(0) @binding(1) var<storage, read_write> is_valid: array<u32>;
+@group(0) @binding(2) var<storage, read_write> sig: array<u32>;
 @group(0) @binding(3) var<uniform> params: vec3<u32>;
 
 @compute
@@ -27,16 +27,17 @@ fn ed25519_verify_main_5(@builtin(global_invocation_id) global_id: vec3<u32>) {
     let num_z_workgroups = params[2];
     let id = (gidx * num_y_workgroups + gidy) * num_z_workgroups + gidz;
 
-    var p = get_p();
-    var r = get_r();
-    var p_wide = get_p_wide();
-    var rinv = get_rinv();
-    var mu_fp = get_mu_fp();
+    var result_affine = pt[id];
 
-    var gs_pt = gs[id];
-    var neg_ak_pt = neg_ak[id];
+    var compressed_y_u32s = compress_eteaffine(&result_affine, {{ log_limb_size }}u);
 
-    var result_ete_pt = ete_add_2008_hwcd_3(&gs_pt, &neg_ak_pt, &p);
+    var v = 1u;
+    for (var i = 0u; i < 8u; i ++) {
+        if (compressed_y_u32s[7u - i] != u32_be_to_le(sig[id * 16u + i])) {
+            v = 0u;
+            break;
+        }
+    }
 
-    pt[id] = ete_to_affine_non_mont(&result_ete_pt, &p, &p_wide, &r, &rinv, &mu_fp);
+    is_valid[id] = v;
 }

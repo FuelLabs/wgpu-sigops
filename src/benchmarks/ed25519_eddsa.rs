@@ -12,7 +12,7 @@ const END: usize = 18;
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn ed25519_ecverify_multiple_benchmarks() {
+pub async fn ed25519_ecverify_multiple_benchmarks_multi() {
     let check = false;
     let log_limb_size = 13u32;
 
