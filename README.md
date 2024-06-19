@@ -312,9 +312,9 @@ ed25519 EdDSA:
 | Shader # | Description | Linux + Nvidia A1000 (ms) | Macbook Pro (M2) |
 |-|-|-|-|
 | 0 | Misc. byte conversion           | 106, 104, 116 | TBC |
-| 1 | SHA512 |                        | 109, 108, 123 | TBC |
-| 2 | `s * G` |                       | 141, 134, 140 | TBC |
-| 3 | `k * -A |                       | 165, 165, 163 | TBC |
+| 1 | SHA512                          | 109, 108, 123 | TBC |
+| 2 | `s * G`                         | 141, 134, 140 | TBC |
+| 3 | `k * -A`                        | 165, 165, 163 | TBC |
 | 4 | add point and convert to affine | 168, 170, 172 | TBC |
 | 5 | compress point                  | 209, 175, 185 | TBC |
 
