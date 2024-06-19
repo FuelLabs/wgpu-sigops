@@ -25,12 +25,12 @@ depending on your platform.
 
 | Shader | Linux + Nvidia A1000 (seconds) | Macbook Pro (M2) (seconds) |
 |-|-|-|
-| secp256k1 ECDSA (single shader)    | 56  | TBC |
-| secp256r1 ECDSA (single shader)    | 121 | TBC |
-| ed25519 EdDSA (single shader)      | 52  | TBC |
+| secp256k1 ECDSA (single shader)    | 56  | N/A |
+| secp256r1 ECDSA (single shader)    | 121 | N/A |
+| ed25519 EdDSA (single shader)      | 52  | N/A |
 | secp256k1 ECDSA (multiple shaders) | 30  | TBC |
 | secp256r1 ECDSA (multiple shaders) | 77  | TBC |
-| ed25519 EdDSA (multiple shaders)   | 28  | TBC |
+| ed25519 EdDSA (multiple shaders)   | 28  | 4.6 |
 
 See below for the a detaile discussion about the differences between the
 single-shader and multiple-shader approaches.
@@ -280,8 +280,16 @@ secp256r1 signature verification benchmarks (multiple shaders):
 GPU timings include data transfer.
 
 ed25519 signature verification benchmarks (multiple shaders): 
-
-TBC
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 91                 |                    |
+| 2048               | 182                | 292                |
+| 4096               | 371                | 552                |
+| 8192               | 730                | 1018               |
+| 16384              | 1461               | 1586               |
+| 32768              | 2923               | 2917               |
+| 65536              | 5842               | 5872               |
+| 131072             | 11697              | 10032              |
 
 ### Per-shader performance
 
