@@ -62,6 +62,7 @@ pub fn init(
 pub async fn ecrecover(
     signatures: Vec<Bytes64>,
     messages: Vec<Message>,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
 ) -> Vec<Vec<u8>> {
     let (num_signatures, next_pow_2, num_limbs, all_sig_u32s, all_msg_u32s, params_t) = init(&signatures, &messages, log_limb_size);
@@ -106,13 +107,14 @@ pub async fn ecrecover(
     let source = render_secp256r1_ecdsa("secp256r1_ecdsa_main_1.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "secp256r1_recover_1");
 
+    let table_buf = create_sb_with_data(&device, table_limbs);
     let u1g_buf = create_empty_sb(&device, (num_limbs * 3 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
 
     let bind_group = create_bind_group(
         &device,
         &compute_pipeline,
         0,
-        &[&u1_buf, &u1g_buf, &params_buf],
+        &[&table_buf, &u1_buf, &u1g_buf, &params_buf],
     );
 
     execute_pipeline(

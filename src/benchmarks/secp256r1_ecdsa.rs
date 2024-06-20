@@ -8,6 +8,7 @@ use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use stopwatch::Stopwatch;
+use crate::precompute::secp256r1_bases;
 
 const START: usize = 8;
 const END: usize = 18;
@@ -19,9 +20,10 @@ pub async fn secp256r1_ecrecover_multiple_benchmarks_multi_shader() {
     let log_limb_size = 13u32;
 
     let mut data = Vec::with_capacity(END - START);
+    let table_limbs = secp256r1_bases(log_limb_size);
     for i in START..END {
         let num_signatures = 2u32.pow(i as u32) as usize;
-        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, false).await;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, false).await;
 
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
@@ -40,9 +42,10 @@ pub async fn secp256r1_ecrecover_multiple_benchmarks_single_shader() {
     let log_limb_size = 13u32;
 
     let mut data = Vec::with_capacity(END - START);
+    let table_limbs = secp256r1_bases(log_limb_size);
     for i in START..END {
         let num_signatures = 2u32.pow(i as u32) as usize;
-        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, true).await;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, true).await;
 
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
@@ -59,9 +62,10 @@ pub async fn secp256r1_ecrecover_multiple_benchmarks_single_shader() {
 pub async fn secp256r1_ecrecover_benchmarks_multi_shader() {
     let check = true;
     let log_limb_size = 13u32;
+    let table_limbs = secp256r1_bases(log_limb_size);
     let num_signatures = 2u32.pow(13u32) as usize;
 
-    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, false).await;
+    let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, false).await;
 
     println!(
         "CPU took {}ms to recover {} secp256r1 ECDSA signatures in serial.",
@@ -75,9 +79,10 @@ pub async fn secp256r1_ecrecover_benchmarks_multi_shader() {
 pub async fn secp256r1_ecrecover_benchmarks_single_shader() {
     let check = true;
     let log_limb_size = 13u32;
+    let table_limbs = secp256r1_bases(log_limb_size);
     let num_signatures = 2u32.pow(13u32) as usize;
 
-    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, true).await;
+    let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, true).await;
 
     println!(
         "CPU took {}ms to recover {} secp256r1 ECDSA signatures in serial.",
@@ -88,6 +93,7 @@ pub async fn secp256r1_ecrecover_benchmarks_single_shader() {
 
 pub async fn do_benchmark(
     check: bool,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
     num_signatures: usize,
     invoke_single: bool,
@@ -128,7 +134,7 @@ pub async fn do_benchmark(
     let recovered = if invoke_single {
         ecrecover_single_shader(signatures, messages, log_limb_size).await
     } else {
-        ecrecover(signatures, messages, log_limb_size).await
+        ecrecover(signatures, messages, table_limbs, log_limb_size).await
     };
     let gpu_ms = sw.elapsed_ms();
 

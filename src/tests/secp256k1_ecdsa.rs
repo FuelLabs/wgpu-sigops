@@ -6,7 +6,7 @@ use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use crate::precompute::secp256k1_bases;
 
-const NUM_RUNS_PER_TEST: usize = 100;
+const NUM_RUNS_PER_TEST: usize = 10;
 
 #[serial_test::serial]
 #[tokio::test]

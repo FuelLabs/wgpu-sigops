@@ -515,6 +515,7 @@ pub async fn do_recover_affine_ys_test(
     assert!(result_y_1 == expected_ys.0 || result_y_1 == expected_ys.1);
 }
 
+// TODO: remove this test
 #[serial_test::serial]
 #[tokio::test]
 pub async fn scalar_mul() {

@@ -3,7 +3,7 @@ pub mod tests {
     use crate::curve_algos::{fixed_base_ec_mul, double_and_add};
     use crate::curve_algos::precompute::precompute_table;
     use num_bigint::{BigUint, RandomBits};
-    use ark_secp256k1::{Projective, Fr};
+    use ark_secp256r1::{Projective, Fr};
     use ark_ff::PrimeField;
     use ark_ec::{CurveGroup, Group};
     use rand::Rng;
@@ -28,8 +28,8 @@ pub mod tests {
             let result2 = fixed_base_ec_mul::<Projective, Fr>(&table, scalar, w);
             let expected = pt.mul(scalar).into_affine();
 
-            assert_eq!(result.into_affine(), expected);
-            assert_eq!(result2.into_affine(), expected);
+            assert_eq!(result, expected);
+            assert_eq!(result2, expected);
         }
     }
 }

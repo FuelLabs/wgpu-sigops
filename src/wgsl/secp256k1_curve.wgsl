@@ -405,7 +405,7 @@ fn projective_strauss_shamir_mul(
 }
 
 /*
- * Scalar multiplication using double-and-add
+ * Scalar multiplication using the windowed method for a fixed base
  */
 fn projective_fixed_mul(
     table: ptr<function, array<PointAffine, {{ table_size }}>>,

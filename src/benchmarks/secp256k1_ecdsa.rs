@@ -17,9 +17,10 @@ pub async fn secp256k1_ecrecover_multiple_benchmarks_multi_shader() {
     let check = false;
 
     let mut data = Vec::with_capacity(END - START);
+    let table_limbs = secp256k1_bases(log_limb_size);
     for i in START..END {
         let num_signatures = 2u32.pow(i as u32) as usize;
-        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, false).await;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, false).await;
         //println!("i: {}; cpu: {}; gpu: {}", i, cpu_ms, gpu_ms);
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
@@ -35,9 +36,10 @@ pub async fn secp256k1_ecrecover_multiple_benchmarks_single_shader() {
     let check = false;
 
     let mut data = Vec::with_capacity(END - START);
+    let table_limbs = secp256k1_bases(log_limb_size);
     for i in START..END {
         let num_signatures = 2u32.pow(i as u32) as usize;
-        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, true).await;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, true).await;
         //println!("i: {}; cpu: {}; gpu: {}", i, cpu_ms, gpu_ms);
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
@@ -50,31 +52,34 @@ pub async fn secp256k1_ecrecover_multiple_benchmarks_single_shader() {
 #[tokio::test]
 pub async fn secp256k1_ecrecover_benchmarks_multi_shader() {
     let log_limb_size = 13;
+    let table_limbs = secp256k1_bases(log_limb_size);
     let check = true;
     let num_signatures = 2u32.pow(13u32) as usize;
     //let num_signatures = 255;
 
-    do_benchmarks(check, log_limb_size, num_signatures, false).await;
+    do_benchmarks(check, &table_limbs, log_limb_size, num_signatures, false).await;
 }
 
 #[serial_test::serial]
 #[tokio::test]
 pub async fn secp256k1_ecrecover_benchmarks_single_shader() {
     let log_limb_size = 13;
+    let table_limbs = secp256k1_bases(log_limb_size);
     let check = true;
     let num_signatures = 2u32.pow(13u32) as usize;
     //let num_signatures = 255;
 
-    do_benchmarks(check, log_limb_size, num_signatures, true).await;
+    do_benchmarks(check, &table_limbs, log_limb_size, num_signatures, true).await;
 }
 
 pub async fn do_benchmarks(
     check: bool,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
     num_signatures: usize,
     invoke_single: bool,
 ) {
-    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, invoke_single).await;
+    let (cpu_ms, gpu_ms) = do_benchmark(check, table_limbs, log_limb_size, num_signatures, invoke_single).await;
 
     println!(
         "CPU took {}ms to recover {} secp256k1 ECDSA signatures in serial.",
@@ -85,6 +90,7 @@ pub async fn do_benchmarks(
 
 pub async fn do_benchmark(
     check: bool,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
     num_signatures: usize,
     invoke_single: bool,
@@ -118,8 +124,6 @@ pub async fn do_benchmark(
             .expect("Failed to recover PK");
     }
     let cpu_ms = sw.elapsed_ms();
-
-    let table_limbs = secp256k1_bases(log_limb_size);
 
     // Perform signature recovery using the GPU
     let sw = Stopwatch::start_new();

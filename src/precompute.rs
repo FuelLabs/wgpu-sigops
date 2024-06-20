@@ -20,6 +20,10 @@ pub fn generate_table<P: CurveGroup, Q: PrimeField>(
 
     let table = precompute_table::<P>(g.into(), WINDOW_SIZE);
 
+    //for i in 0..table.len() {
+        //println!("i: {}, {}", i, table[i]);
+    //}
+
     let mut table_limbs = vec![];
     for t in &table {
         let pt_xyz = affine_to_projectivexyz(t);
