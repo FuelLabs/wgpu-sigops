@@ -188,6 +188,49 @@ pub async fn projective_dbl_2007_bl_unsafe() {
 
 #[serial_test::serial]
 #[tokio::test]
+pub async fn projective_madd_1998_cmo_unsafe() {
+    let mut rng = ChaCha8Rng::seed_from_u64(2);
+
+    let g = Affine::generator();
+
+    for log_limb_size in 11..16 {
+        for _ in 0..NUM_RUNS_PER_TEST {
+            let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
+            let r: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let r = Fr::from_be_bytes_mod_order(&r.to_bytes_be());
+
+            // a and b are in Jacobian
+            let a: Projective = g.mul(s).into_affine().into();
+            let b: Projective = g.mul(r).into_affine().into();
+
+            assert_eq!(b.z, Fq::one());
+
+            let a = coords::ProjectiveXYZ::<Fq> {
+                x: a.x,
+                y: a.y,
+                z: a.z,
+            };
+            let b = coords::ProjectiveXYZ::<Fq> {
+                x: b.x,
+                y: b.y,
+                z: b.z,
+            };
+            do_add_test(
+                &a,
+                &b,
+                log_limb_size,
+                projective_to_affine_func,
+                "secp256k1_curve_tests.wgsl",
+                "test_projective_madd_1998_cmo",
+            )
+            .await;
+        }
+    }
+}
+
+#[serial_test::serial]
+#[tokio::test]
 pub async fn jacobian_add_2007_bl_unsafe() {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     let g = Affine::generator();

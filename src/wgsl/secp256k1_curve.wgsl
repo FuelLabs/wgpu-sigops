@@ -110,6 +110,47 @@ fn projective_dbl_2007_bl_unsafe(
     return Point(x3, y3, z3);
 }
 
+/// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2007-bl
+/// Assumes that Z2 = 1, a != b, and a is not the point at infinity
+fn projective_madd_1998_cmo_unsafe(
+    a: ptr<function, Point>,
+    b: ptr<function, Point>,
+    p: ptr<function, BigInt>
+) -> Point {
+    var x1 = (*a).x;
+    var y1 = (*a).y;
+    var z1 = (*a).z;
+    var x2 = (*b).x;
+    var y2 = (*b).y;
+    var z2 = (*b).z;
+
+    if (bigint_is_zero(&x1) && bigint_is_zero(&z1)) {
+        return *b;
+    }
+
+    var y2z1 = mont_mul(&y2, &z1, p);
+    var u = ff_sub(&y2z1, &y1, p);
+    var uu = mont_mul(&u, &u, p);
+    var x2z1 = mont_mul(&x2, &z1, p);
+    var v = ff_sub(&x2z1, &x1, p);
+    var vv = mont_mul(&v, &v, p);
+    var vvv = mont_mul(&v, &vv, p);
+    var r = mont_mul(&vv, &x1, p);
+    var uuz1 = mont_mul(&uu, &z1, p);
+    var r2 = ff_add(&r, &r, p);
+    var vvvr2 = ff_add(&vvv, &r2, p);
+    var aa = ff_sub(&uuz1, &vvvr2, p);
+    var x3 = mont_mul(&v, &aa, p);
+
+    var ra = ff_sub(&r, &aa, p);
+    var ura = mont_mul(&u, &ra, p);
+    var vvvy1 = mont_mul(&vvv, &y1, p);
+    var y3 = ff_sub(&ura, &vvvy1, p);
+    var z3 = mont_mul(&vvv, &z1, p);
+
+    return Point(x3, y3, z3);
+}
+
 fn jacobian_negate(
     a: ptr<function, Point>,
     p: ptr<function, BigInt>
@@ -417,6 +458,10 @@ fn projective_fixed_mul(
                 result = t;
             } else {
                 result = projective_add_2007_bl_unsafe(&result, &t, p);
+
+                // mixed addition has fewer multiplications but the benchmarks
+                // show a slowdown for unknown reasons 
+                // result = projective_madd_1998_cmo_unsafe(&result, &t, p);
             }
             result_is_inf = false;
         }

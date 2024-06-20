@@ -155,6 +155,64 @@ pub fn projective_dbl_2007_bl_unsafe(x: &ProjectiveXYZ<Fq>) -> ProjectiveXYZ<Fq>
     }
 }
 
+/// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2007-bl
+/// Assumes that Z2 = 1, a != b, and a is not the point at infinity
+/// Cost:
+pub fn projective_madd_1998_cmo(
+    a: &ProjectiveXYZ<Fq>,
+    b: &ProjectiveXYZ<Fq>,
+) -> ProjectiveXYZ<Fq> {
+    let x1: Fq = a.x;
+    let y1: Fq = a.y;
+    let z1: Fq = a.z;
+    let x2: Fq = b.x;
+    let y2: Fq = b.y;
+    let z2: Fq = b.z;
+    assert_eq!(z2, Fq::from(1u32));
+
+    if a.x == Fq::zero() && a.z == Fq::zero() {
+        return b.clone();
+    }
+
+    let y2z1 = &y2 * &z1;
+    let u = &y2z1 - &y1;
+    let uu = &u * &u;
+    let x2z1 = &x2 * &z1;
+    let v = &x2z1 - &x1;
+    let vv = &v * &v;
+    let vvv = &v * &vv;
+    let r = &vv * &x1;
+    let uuz1 = &uu * &z1;
+    let r2 = &r + &r;
+    let vvvr2 = &vvv + &r2;
+    let a = &uuz1 - &vvvr2;
+    let x3 = &v * &a;
+
+    let ra = &r - &a;
+    let ura = &u * &ra;
+    let vvvy1 = &vvv * &y1;
+    let y3 = &ura - &vvvy1;
+    let z3 = &vvv * &z1;
+
+    ProjectiveXYZ {
+        x: x3,
+        y: y3,
+        z: z3,
+    }
+    /*
+      u = Y2*Z1-Y1
+      uu = u * u
+      v = X2*Z1-X1
+      vv = v * v
+      vvv = v*vv
+      R = vv*X1
+      A = uu*Z1-vvv-2*R
+      X3 = v*A
+      Y3 = u*(R-A)-vvv*Y1
+      Z3 = vvv*Z1
+    */
+}
+
 /// http://www.hyperelliptic.org/EFD/g1p/auto-shortw-jacobian-0.html#addition-add-2007-bl
 /// ark-ec-0.4.2/src/models/short_weierstrass/group.rs
 /// Unsafe as it does not work with the point at infinity!
@@ -344,6 +402,34 @@ pub mod tests {
         assert_eq!(sum.x, Fq::zero());
         assert_eq!(sum.y, Fq::zero());
         assert_eq!(sum.z, Fq::zero());
+    }
+
+    #[test]
+    pub fn test_projective_madd_1998_cmo() {
+        // Test with different points
+        let g = Affine::generator();
+        let a: Affine = g.mul(Fr::from(2u32)).into_affine();
+        let b: Affine = g.mul(Fr::from(3u32)).into_affine();
+
+        let a_proj = curve::affine_to_projectivexyz(&a);
+        let b_proj = curve::affine_to_projectivexyz(&b);
+
+        let expected = a + b;
+        let sum = curve::projective_madd_1998_cmo(&a_proj, &b_proj);
+
+        let sum_affine = curve::projectivexyz_to_affine(&sum);
+
+        assert_eq!(sum_affine, expected.into_affine());
+
+        // Test with the point at infinity
+        let a = Affine::zero();
+        let b: Affine = g.mul(Fr::from(2u32)).into_affine();
+        let a_proj = curve::affine_to_projectivexyz(&a);
+        let b_proj = curve::affine_to_projectivexyz(&b);
+        let sum = curve::projective_madd_1998_cmo(&a_proj, &b_proj);
+        let expected = a + b;
+        let sum_affine = curve::projectivexyz_to_affine(&sum);
+        assert_eq!(sum_affine, expected.into_affine());
     }
 
     #[test]
