@@ -46,7 +46,7 @@ pub async fn test_secp256r1_ecrecover_single() {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn test_secp256r1_ecrecover() {
+pub async fn test_secp256r1_ecrecover_multi() {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     let scalar_p = crate::moduli::secp256r1_fr_modulus_biguint();
     for log_limb_size in 13..14 {

@@ -172,11 +172,7 @@ fn projective_mul(
     x: ptr<function, BigInt>,
     p: ptr<function, BigInt>
 ) -> Point {
-    var zero: BigInt;
-    var one: BigInt;
-    one.limbs[0] = 1u;
-
-    var result = Point(zero, one, zero);
+    var result: Point;
     var result_is_inf = true;
 
     var s = *x;

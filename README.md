@@ -25,7 +25,7 @@ depending on your platform.
 
 | Shader | Linux + Nvidia A1000 (seconds) | Macbook Pro (M2) (seconds) |
 |-|-|-|
-| secp256k1 ECDSA (single shader)    | 56  | N/A |
+| secp256k1 ECDSA (single shader)    | 116  | N/A |
 | secp256r1 ECDSA (single shader)    | 121 | N/A |
 | ed25519 EdDSA (single shader)      | 52  | N/A |
 | secp256k1 ECDSA (multiple shaders) | 30  | TBC |
@@ -125,8 +125,9 @@ unit tests, include:
 - Square root calculation where the modulus is 3 mod 4
 - Projective curve point addition and doubling
 - Extended Twisted Edwards curve point addition and doubling
-- Shamir-Strauss multiplication
-- Double-and-add multiplication
+- Shamir-Strauss EC multiplication
+- Double-and-add EC multiplication
+- Fixed-base windowed EC multiplication
 - SHA512
 
 These tests execute the same operations in CPU and in GPU, and compare the
@@ -208,14 +209,14 @@ sequence of shader execution is complete.
 secp256k1 signature recovery benchmarks (multiple shaders): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
-| 1024               | 32                 | 172                |
-| 2048               | 63                 | 156                |
-| 4096               | 127                | 158                |
-| 8192               | 254                | 219                |
-| 16384              | 509                | 338                |
-| 32768              | 1018               | 554                |
-| 65536              | 2033               | 933                |
-| 131072             | 4066               | 1695               |
+| 1024               | 32                 | 212                |
+| 2048               | 64                 | 167                |
+| 4096               | 128                | 164                |
+| 8192               | 257                | 202                |
+| 16384              | 514                | 290                |
+| 32768              | 1028               | 471                |
+| 65536              | 2056               | 761                |
+| 131072             | 4105               | 1360               |
 
 GPU timings include data transfer.
 
@@ -295,6 +296,8 @@ ed25519 signature verification benchmarks (multiple shaders):
 
 With 2 signatures in parallel, the following measurements are for the
 *cumulative* runtime up to the respective shader, including data transfer both ways.
+
+TODO: update these figures
 
 secp256k1 ECDSA: 
 

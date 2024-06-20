@@ -4,8 +4,9 @@ use num_bigint::{BigUint, RandomBits};
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
+use crate::precompute::secp256k1_bases;
 
-const NUM_RUNS_PER_TEST: usize = 10;
+const NUM_RUNS_PER_TEST: usize = 100;
 
 #[serial_test::serial]
 #[tokio::test]
@@ -13,6 +14,8 @@ pub async fn test_secp256k1_ecrecover_single() {
     let mut rng = ChaCha8Rng::seed_from_u64(2);
     let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
     for log_limb_size in 13..14 {
+        let table_limbs = secp256k1_bases(log_limb_size);
+
         for _ in 0..NUM_RUNS_PER_TEST {
             // Generate a random message
             let msg: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &scalar_p;
@@ -33,6 +36,7 @@ pub async fn test_secp256k1_ecrecover_single() {
                 &fuel_signature,
                 &message,
                 &pk,
+                &table_limbs,
                 log_limb_size,
                 true,
             )
@@ -43,10 +47,13 @@ pub async fn test_secp256k1_ecrecover_single() {
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn test_secp256k1_ecrecover() {
-    let mut rng = ChaCha8Rng::seed_from_u64(2);
+pub async fn test_secp256k1_ecrecover_multi() {
+    let mut rng = ChaCha8Rng::seed_from_u64(3);
     let scalar_p = crate::moduli::secp256k1_fr_modulus_biguint();
+
     for log_limb_size in 13..14 {
+        let table_limbs = secp256k1_bases(log_limb_size);
+
         for _ in 0..NUM_RUNS_PER_TEST {
             // Generate a random message
             let msg: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &scalar_p;
@@ -67,6 +74,7 @@ pub async fn test_secp256k1_ecrecover() {
                 &fuel_signature,
                 &message,
                 &pk,
+                &table_limbs,
                 log_limb_size,
                 false,
             )
@@ -79,6 +87,7 @@ pub async fn do_secp256k1_test(
     signature: &Signature,
     message: &Message,
     verifying_key: &PublicKey,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
     invoke_single: bool,
 ) {
@@ -86,7 +95,7 @@ pub async fn do_secp256k1_test(
     let result = if invoke_single {
         ecrecover_single_shader(vec![*signature], vec![*message], log_limb_size).await
     } else {
-        ecrecover(vec![*signature], vec![*message], log_limb_size).await
+        ecrecover(vec![*signature], vec![*message], table_limbs, log_limb_size).await
     };
     assert_eq!(result[0], pk_affine_bytes);
 }

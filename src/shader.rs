@@ -1,3 +1,4 @@
+use crate::precompute::WINDOW_SIZE;
 use crate::tests::{get_ed25519_d2, get_secp256k1_b, get_secp256r1_b};
 use ark_ec::twisted_edwards::TECurveConfig;
 use ark_ec::AffineRepr;
@@ -120,7 +121,12 @@ pub fn do_render(
         log_limb_size,
     );
 
+    let log_table_size = WINDOW_SIZE;
+    let table_size = 2u32.pow(log_table_size);
+
     let context = context! {
+        table_size => table_size,
+        log_table_size => log_table_size,
         num_limbs => num_limbs,
         log_limb_size => log_limb_size,
         two_pow_word_size => two_pow_word_size,

@@ -240,6 +240,10 @@ pub fn projectivexyz_to_affine(point: &ProjectiveXYZ<Fq>) -> Affine {
     let y = point.y;
     let z = point.z;
 
+    if x == Fq::from(0u32) && y == Fq::from(1u32) && z == x {
+        return Affine::identity();
+    }
+
     let zinv = z.inverse().unwrap();
     Affine::new(x * zinv, y * zinv)
 }

@@ -14,7 +14,6 @@
 @group(0) @binding(0) var<storage, read_write> u1g: array<Point>;
 @group(0) @binding(1) var<storage, read_write> u2r: array<Point>;
 @group(0) @binding(2) var<storage, read_write> sum: array<Point>;
-//@group(0) @binding(2) var<storage, read_write> result: array<u32>;
 @group(0) @binding(3) var<uniform> params: vec3<u32>;
 
 @compute

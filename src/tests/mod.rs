@@ -111,6 +111,23 @@ pub fn projectivexyz_to_mont_limbs<F: PrimeField>(
     pt_a_limbs
 }
 
+pub fn projectivexy_to_mont_limbs<F: PrimeField>(
+    a: &coords::ProjectiveXYZ<F>,
+    p: &BigUint,
+    log_limb_size: u32,
+) -> Vec<u32> {
+    let num_limbs = calc_num_limbs(log_limb_size, 256);
+    let r = multiprecision::mont::calc_mont_radix(num_limbs, log_limb_size);
+    let a_x_r = fq_to_biguint::<F>(a.x) * &r % p;
+    let a_y_r = fq_to_biguint::<F>(a.y) * &r % p;
+    let a_x_r_limbs = bigint::from_biguint_le(&a_x_r, num_limbs, log_limb_size);
+    let a_y_r_limbs = bigint::from_biguint_le(&a_y_r, num_limbs, log_limb_size);
+    let mut pt_a_limbs = Vec::<u32>::with_capacity(num_limbs * 2);
+    pt_a_limbs.extend_from_slice(&a_x_r_limbs);
+    pt_a_limbs.extend_from_slice(&a_y_r_limbs);
+    pt_a_limbs
+}
+
 pub fn fuel_decode_signature(signature: &Signature) -> (Signature, bool) {
     let mut sig = signature.clone();
     let is_y_odd = (sig[32] & 0x80) != 0;

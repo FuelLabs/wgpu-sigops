@@ -5,6 +5,7 @@ use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use stopwatch::Stopwatch;
+use crate::precompute::secp256k1_bases;
 
 const START: usize = 10;
 const END: usize = 18;
@@ -118,12 +119,14 @@ pub async fn do_benchmark(
     }
     let cpu_ms = sw.elapsed_ms();
 
+    let table_limbs = secp256k1_bases(log_limb_size);
+
     // Perform signature recovery using the GPU
     let sw = Stopwatch::start_new();
     let recovered = if invoke_single {
         ecrecover_single_shader(signatures, messages, log_limb_size).await
     } else {
-        ecrecover(signatures, messages, log_limb_size).await
+        ecrecover(signatures, messages, &table_limbs, log_limb_size).await
     };
     let gpu_ms = sw.elapsed_ms();
 

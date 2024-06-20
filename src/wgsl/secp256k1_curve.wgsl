@@ -4,6 +4,11 @@ struct Point {
     z: BigInt
 }
 
+struct PointAffine {
+    x: BigInt,
+    y: BigInt,
+}
+
 fn mont_sqrt_case3mod4(
     xr: ptr<function, BigInt>,
     p: ptr<function, BigInt>
@@ -233,11 +238,7 @@ fn projective_mul(
     x: ptr<function, BigInt>,
     p: ptr<function, BigInt>
 ) -> Point {
-    var zero: BigInt;
-    var one: BigInt;
-    one.limbs[0] = 1u;
-
-    var result = Point(zero, one, zero);
+    var result: Point;
     var result_is_inf = true;
 
     var s = *x;
@@ -357,6 +358,68 @@ fn projective_strauss_shamir_mul(
             continue;
         }
         result = projective_add_2007_bl_unsafe(&result, &point_to_add, p);
+    }
+
+    return result;
+}
+
+/*
+ * Scalar multiplication using double-and-add
+ */
+fn projective_fixed_mul(
+    table: ptr<function, array<PointAffine, {{ table_size }}>>,
+    s: ptr<function, BigInt>,
+    p: ptr<function, BigInt>,
+    r: ptr<function, BigInt>
+) -> Point {
+    // Convert s to bits
+    var temp = *s;
+    var scalar_bits: array<bool, 256>;
+
+    for (var i = 0u; i < 256u; i ++) {
+        if bigint_is_zero(&temp) {
+            break;
+        }
+
+        scalar_bits[i] = !bigint_is_even(&temp);
+
+        temp = bigint_div2(&temp);
+    }
+
+    var result: Point;
+    var zero: BigInt;
+    result = Point(zero, *r, zero);
+    var result_is_inf = true;
+
+    var i = 256u;
+    while (i > 0u) {
+        var bits = 0u;
+        for (var j = 0u; j < {{ log_table_size }}u; j ++){
+            if (i > 0u) {
+                i -= 1u;
+                bits <<= 1u;
+                if (scalar_bits[i]) {
+                    bits |= 1u;
+                }
+            }
+        }
+
+        if (!result_is_inf) {
+            for (var j = 0u; j < {{ log_table_size }}u; j ++){
+                result = projective_dbl_2007_bl_unsafe(&result, p);
+            }
+        }
+
+        if (bits != 0u) {
+            var t_affine = (*table)[bits - 1u];
+            var t = Point(t_affine.x, t_affine.y, *r);
+            if (result_is_inf) {
+                result = t;
+            } else {
+                result = projective_add_2007_bl_unsafe(&result, &t, p);
+            }
+            result_is_inf = false;
+        }
     }
 
     return result;

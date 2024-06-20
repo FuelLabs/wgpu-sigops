@@ -6,4 +6,5 @@ pub mod moduli;
 pub mod secp256k1_ecdsa;
 pub mod secp256r1_ecdsa;
 pub mod shader;
+pub mod precompute;
 pub mod tests;
