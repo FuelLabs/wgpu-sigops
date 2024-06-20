@@ -68,6 +68,7 @@ pub async fn ecverify(
     signatures: Vec<Signature>,
     messages: Vec<Message>,
     verifying_keys: Vec<VerifyingKey>,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
 ) -> Vec<bool> {
     let (num_signatures, next_pow_2, num_limbs, all_sig_u32s, all_msg_u32s, all_pk_u32s, params_t) = init(&signatures, &messages, &verifying_keys, log_limb_size);
@@ -149,13 +150,14 @@ pub async fn ecverify(
     let source = render_ed25519_eddsa("ed25519_eddsa_main_2.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_2");
 
+    let table_buf = create_sb_with_data(&device, table_limbs);
     let gs_buf = create_empty_sb(&device, (next_pow_2 * num_limbs * 4 * std::mem::size_of::<u32>()) as u64);
 
     let bind_group = create_bind_group(
         &device,
         &compute_pipeline,
         0,
-        &[&s_buf, &ayr_buf, &k_buf, &compressed_sign_bit_buf, &gs_buf, &params_buf],
+        &[&table_buf, &s_buf, &ayr_buf, &k_buf, &compressed_sign_bit_buf, &gs_buf, &params_buf],
     );
 
     execute_pipeline(

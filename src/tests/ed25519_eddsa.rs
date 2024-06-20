@@ -1,4 +1,5 @@
-use crate::ed25519_eddsa::ecverify;
+use crate::precompute::ed25519_bases;
+use crate::ed25519_eddsa::{ecverify, ecverify_single};
 use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
 use fuel_crypto::Message;
 use rand_chacha::ChaCha8Rng;
@@ -7,10 +8,11 @@ use rand::RngCore;
 
 #[serial_test::serial]
 #[tokio::test]
-pub async fn test_ed25519_ecverify() {
+pub async fn test_ed25519_ecverify_single() {
     let mut rng = ChaCha8Rng::seed_from_u64(1);
 
     for log_limb_size in 13..14 {
+        let table_limbs = ed25519_bases(log_limb_size);
         for _ in 0..10 {
             let mut message = [0u8; 100];
             rng.fill_bytes(&mut message);
@@ -23,7 +25,7 @@ pub async fn test_ed25519_ecverify() {
 
             assert!(verifying_key.verify(&message, &signature).is_ok());
 
-            do_eddsa_test(&verifying_key, &signature, &message_m, log_limb_size).await;
+            do_eddsa_test(&verifying_key, &signature, &message_m, &table_limbs, log_limb_size, false).await;
         }
     }
 }
@@ -32,9 +34,15 @@ pub async fn do_eddsa_test(
     verifying_key: &VerifyingKey,
     signature: &Signature,
     message: &Message,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
+    invoke_single: bool,
 ) {
-    let result = ecverify(vec![*signature], vec![*message], vec![*verifying_key], log_limb_size).await;
+    let result = if invoke_single {
+        ecverify_single(vec![*signature], vec![*message], vec![*verifying_key], log_limb_size).await
+    } else {
+        ecverify(vec![*signature], vec![*message], vec![*verifying_key], table_limbs, log_limb_size).await
+    };
     for r in result {
         assert!(r);
     }

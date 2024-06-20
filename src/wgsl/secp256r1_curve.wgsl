@@ -290,8 +290,6 @@ fn projective_fixed_mul(
     }
 
     var result: Point;
-    var zero: BigInt;
-    result = Point(zero, *r, zero);
     var result_is_inf = true;
 
     var i = 256u;

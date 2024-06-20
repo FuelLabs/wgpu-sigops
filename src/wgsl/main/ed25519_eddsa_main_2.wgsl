@@ -11,12 +11,13 @@
 {% include "sha512.wgsl" %}
 {% include "ed25519_reduce_fr.wgsl" %}
 
-@group(0) @binding(0) var<storage, read_write> s: array<BigInt>;
-@group(0) @binding(1) var<storage, read_write> ayr: array<BigInt>;
-@group(0) @binding(2) var<storage, read_write> k: array<BigInt>;
-@group(0) @binding(3) var<storage, read_write> compressed_sign_bit: array<u32>;
-@group(0) @binding(4) var<storage, read_write> gs: array<ETEPoint>;
-@group(0) @binding(5) var<uniform> params: vec3<u32>;
+@group(0) @binding(0) var<storage, read_write> table: array<ETEXYT>;
+@group(0) @binding(1) var<storage, read_write> s: array<BigInt>;
+@group(0) @binding(2) var<storage, read_write> ayr: array<BigInt>;
+@group(0) @binding(3) var<storage, read_write> k: array<BigInt>;
+@group(0) @binding(4) var<storage, read_write> compressed_sign_bit: array<u32>;
+@group(0) @binding(5) var<storage, read_write> gs: array<ETEPoint>;
+@group(0) @binding(6) var<uniform> params: vec3<u32>;
 
 @compute
 @workgroup_size(256)
@@ -35,11 +36,16 @@ fn ed25519_verify_main_2(@builtin(global_invocation_id) global_id: vec3<u32>) {
     var rinv = get_rinv();
     var mu_fp = get_mu_fp();
 
+    var table_size = {{ table_size }}u;
+    var table_pts: array<ETEXYT, {{ table_size }}>;
+    for (var i = 0u; i < table_size; i ++) {
+        table_pts[i] = table[i];
+    }
+
     var s_val = s[id];
     var ayr_val = ayr[id];
     var k_val = k[id];
     var x_sign = compressed_sign_bit[id] == 1u;
 
-    var g = get_ed25519_generator();
-    gs[id] = ete_mul(&g, &s_val, &p);
+    gs[id] = ete_fixed_mul(&table_pts, &s_val, &p, &r);
 }

@@ -10,6 +10,12 @@ struct ETEAffinePoint {
     y: BigInt,
 }
 
+struct ETEXYT {
+    x: BigInt,
+    y: BigInt,
+    t: BigInt,
+}
+
 fn compress_eteaffine(
     pt: ptr<function, ETEAffinePoint>,
     log_limb_size: u32,
@@ -219,4 +225,68 @@ fn ete_to_affine_non_mont(
     var affine_y = ff_mul(&y, &z_inv, p, p_wide, mu_fp);
 
     return ETEAffinePoint(affine_x, affine_y);
+}
+
+/*
+ * Scalar multiplication using the windowed method for a fixed base
+ */
+fn ete_fixed_mul(
+    table: ptr<function, array<ETEXYT, {{ table_size }}>>,
+    s: ptr<function, BigInt>,
+    p: ptr<function, BigInt>,
+    r: ptr<function, BigInt>,
+) -> ETEPoint {
+    // Convert s to bits
+    var temp = *s;
+    var scalar_bits: array<bool, 256>;
+
+    for (var i = 0u; i < 256u; i ++) {
+        if bigint_is_zero(&temp) {
+            break;
+        }
+
+        scalar_bits[i] = !bigint_is_even(&temp);
+
+        temp = bigint_div2(&temp);
+    }
+
+    var result: ETEPoint;
+    var result_is_inf = true;
+
+    var i = 256u;
+    while (i > 0u) {
+        var bits = 0u;
+        for (var j = 0u; j < {{ log_table_size }}u; j ++){
+            if (i > 0u) {
+                i -= 1u;
+                bits <<= 1u;
+                if (scalar_bits[i]) {
+                    bits |= 1u;
+                }
+            }
+        }
+
+        if (!result_is_inf) {
+            for (var j = 0u; j < {{ log_table_size }}u; j ++){
+                result = ete_dbl_2008_hwcd(&result, p);
+            }
+        }
+
+        if (bits != 0u) {
+            var table_pt = (*table)[bits - 1u];
+            var t = ETEPoint(table_pt.x, table_pt.y, table_pt.t, *r);
+            if (result_is_inf) {
+                result = t;
+            } else {
+                result = ete_add_2008_hwcd_3(&result, &t, p);
+
+                // mixed addition has fewer multiplications but the benchmarks
+                // show a slowdown for unknown reasons 
+                // result = projective_madd_1998_cmo_unsafe(&result, &t, p);
+            }
+            result_is_inf = false;
+        }
+    }
+
+    return result;
 }

@@ -1,3 +1,4 @@
+use crate::precompute::ed25519_bases;
 use crate::ed25519_eddsa::{ecverify, ecverify_single};
 use crate::curve_algos::ed25519_eddsa::{ark_ecverify, curve25519_ecverify};
 use ed25519_dalek::{Signature, Signer, SigningKey};
@@ -15,11 +16,12 @@ const END: usize = 18;
 pub async fn ed25519_ecverify_multiple_benchmarks_multi_shader() {
     let check = false;
     let log_limb_size = 13u32;
+    let table_limbs = ed25519_bases(log_limb_size);
 
     let mut data = Vec::with_capacity(END - START);
     for i in START..END {
         let num_signatures = 2u32.pow(i as u32) as usize;
-        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, false).await;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, false).await;
 
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
@@ -33,11 +35,12 @@ pub async fn ed25519_ecverify_multiple_benchmarks_multi_shader() {
 pub async fn ed25519_ecverify_multiple_benchmarks_single_shader() {
     let check = false;
     let log_limb_size = 13u32;
+    let table_limbs = ed25519_bases(log_limb_size);
 
     let mut data = Vec::with_capacity(END - START);
     for i in START..END {
         let num_signatures = 2u32.pow(i as u32) as usize;
-        let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, true).await;
+        let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, true).await;
 
         data.push((num_signatures, cpu_ms, gpu_ms));
     }
@@ -51,9 +54,10 @@ pub async fn ed25519_ecverify_multiple_benchmarks_single_shader() {
 pub async fn ed25519_ecverify_benchmarks_multi_shader() {
     let check = true;
     let log_limb_size = 13u32;
+    let table_limbs = ed25519_bases(log_limb_size);
     let num_signatures = 2u32.pow(13u32) as usize;
 
-    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, false).await;
+    let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, false).await;
 
     println!(
         "CPU took {}ms to recover {} ed25519 EdDSA signatures in serial.",
@@ -67,9 +71,10 @@ pub async fn ed25519_ecverify_benchmarks_multi_shader() {
 pub async fn ed25519_ecverify_benchmarks_single() {
     let check = true;
     let log_limb_size = 13u32;
+    let table_limbs = ed25519_bases(log_limb_size);
     let num_signatures = 2u32.pow(13u32) as usize;
 
-    let (cpu_ms, gpu_ms) = do_benchmark(check, log_limb_size, num_signatures, true).await;
+    let (cpu_ms, gpu_ms) = do_benchmark(check, &table_limbs, log_limb_size, num_signatures, true).await;
 
     println!(
         "CPU took {}ms to recover {} ed25519 EdDSA signatures in serial.",
@@ -80,6 +85,7 @@ pub async fn ed25519_ecverify_benchmarks_single() {
 
 pub async fn do_benchmark(
     check: bool,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
     num_signatures: usize,
     invoke_single: bool,
@@ -122,7 +128,7 @@ pub async fn do_benchmark(
     let all_is_valid = if invoke_single {
         ecverify_single(signatures, messages, verifying_keys, log_limb_size).await
     } else {
-        ecverify(signatures, messages, verifying_keys, log_limb_size).await
+        ecverify(signatures, messages, verifying_keys, table_limbs, log_limb_size).await
     };
     let gpu_ms = sw.elapsed_ms();
 

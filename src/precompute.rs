@@ -2,7 +2,7 @@ use crate::curve_algos::precompute::precompute_table;
 use crate::curve_algos::coords::ProjectiveXYZ;
 use crate::curve_algos::ed25519_curve::affine_to_projective;
 use num_bigint::BigUint;
-use crate::tests::{projectivexy_to_mont_limbs, eteprojective_to_mont_limbs};
+use crate::tests::{projectivexy_to_mont_limbs, eteprojective_to_xyt_mont_limbs};
 use crate::curve_algos::{secp256k1_curve, secp256r1_curve};
 use ark_ed25519::{EdwardsAffine, EdwardsProjective, Fq};
 use ark_ec::AffineRepr;
@@ -62,7 +62,7 @@ pub fn ed25519_bases(
     let mut table_limbs = vec![];
     for t in &table {
         let pt_xytz = affine_to_projective(t);
-        table_limbs.extend(eteprojective_to_mont_limbs(&pt_xytz, &p, log_limb_size));
+        table_limbs.extend(eteprojective_to_xyt_mont_limbs(&pt_xytz, &p, log_limb_size));
     }
 
     table_limbs

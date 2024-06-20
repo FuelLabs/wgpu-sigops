@@ -473,7 +473,12 @@ pub fn do_render_ed25519(
 
     let (fr_reduce_r_limbs_array, scalar_p_limbs_array) = gen_ed25519_reduce_fr_constants(scalar_p);
 
+    let log_table_size = WINDOW_SIZE;
+    let table_size = 2u32.pow(log_table_size);
+
     let context = context! {
+        table_size => table_size,
+        log_table_size => log_table_size,
         num_limbs => num_limbs,
         log_limb_size => log_limb_size,
         two_pow_word_size => two_pow_word_size,
