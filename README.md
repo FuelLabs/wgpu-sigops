@@ -292,6 +292,52 @@ ed25519 signature verification benchmarks (multiple shaders):
 | 65536              | 5842               | 5872               |
 | 131072             | 11697              | 10032              |
 
+##### Mac Mini (M1)
+
+secp256k1 signature recovery benchmarks (multiple shaders): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 32                 | 767                |
+| 2048               | 107                | 8895               |
+| 4096               | 172                | 3862               |
+| 8192               | 300                | 10021              |
+| 16384              | 570                | 7943               |
+| 32768              | 1075               | 10027              |
+| 65536              | 2111               | 10037              |
+| 131072             | 4175               | 10053              |
+
+GPU timings include data transfer.
+
+secp256r1 signature recovery benchmarks (multiple shaders): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 256                | 127                | 865                |
+| 512                | 293                | 891                |
+| 1024               | 550                | 980                |
+| 2048               | 1058               | 10020              |
+| 4096               | 2084               | 10020              |
+| 8192               | 4126               | 10021              |
+| 16384              | 8208               | 10023              |
+| 32768              | 16363              | 10029              |
+| 65536              | 32680              | 10035              |
+| 131072             | 65318              | 10049              |
+
+GPU timings include data transfer.
+
+ed25519 signature verification benchmarks (multiple shaders): 
+| Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
+| ------------------ | ------------------ | ------------------ |
+| 1024               | 103                | 10050              |
+| 2048               | 254                | 10051              |
+| 4096               | 459                | 10052              |
+| 8192               | 872                | 10051              |
+| 16384              | 1699               | 10048              |
+| 32768              | 3351               | 10059              |
+| 65536              | 6655               | 10054              |
+| 131072             | 13266              | 10057              |
+
+GPU timings include data transfer.
+
 ### Per-shader performance
 
 With 2 signatures in parallel, the following measurements are for the

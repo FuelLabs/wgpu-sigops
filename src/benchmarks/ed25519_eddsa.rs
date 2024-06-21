@@ -1,6 +1,6 @@
 use crate::precompute::ed25519_bases;
 use crate::ed25519_eddsa::{ecverify, ecverify_single};
-use crate::curve_algos::ed25519_eddsa::{ark_ecverify, curve25519_ecverify};
+use crate::curve_algos::ed25519_eddsa::curve25519_ecverify;
 use ed25519_dalek::{Signature, Signer, SigningKey, VerifyingKey};
 use fuel_crypto::Message;
 use rand::RngCore;
@@ -101,6 +101,11 @@ pub async fn do_benchmark(
     verifying_keys: &Vec<VerifyingKey>,
     invoke_single: bool,
 ) -> (u32, u32) {
+    let signatures = signatures[0..num_signatures].to_vec();
+    let messages = messages[0..num_signatures].to_vec();
+    let verifying_keys = verifying_keys[0..num_signatures].to_vec();
+
+    // Perform signature recovery using the CPU
     let sw = Stopwatch::start_new();
     for i in 0..num_signatures {
         let _ = curve25519_ecverify(&verifying_keys[i], &signatures[i], &messages[i].as_slice());
