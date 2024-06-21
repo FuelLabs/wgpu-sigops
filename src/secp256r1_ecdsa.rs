@@ -60,8 +60,8 @@ pub fn init(
 }
 
 pub async fn ecrecover(
-    signatures: Vec<Bytes64>,
-    messages: Vec<Message>,
+    signatures: &Vec<Bytes64>,
+    messages: &Vec<Message>,
     table_limbs: &Vec<u32>,
     log_limb_size: u32,
 ) -> Vec<Vec<u8>> {
@@ -209,8 +209,8 @@ pub async fn ecrecover(
 }
 
 pub async fn ecrecover_single_shader(
-    signatures: Vec<Bytes64>,
-    messages: Vec<Message>,
+    signatures: &Vec<Bytes64>,
+    messages: &Vec<Message>,
     log_limb_size: u32,
 ) -> Vec<Vec<u8>> {
     let (num_signatures, next_pow_2, _num_limbs, all_sig_u32s, all_msg_u32s, params_t) = init(&signatures, &messages, log_limb_size);

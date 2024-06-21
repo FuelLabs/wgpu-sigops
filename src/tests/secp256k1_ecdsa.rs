@@ -93,9 +93,9 @@ pub async fn do_secp256k1_test(
 ) {
     let pk_affine_bytes = verifying_key.as_slice();
     let result = if invoke_single {
-        ecrecover_single_shader(vec![*signature], vec![*message], log_limb_size).await
+        ecrecover_single_shader(&vec![*signature], &vec![*message], log_limb_size).await
     } else {
-        ecrecover(vec![*signature], vec![*message], table_limbs, log_limb_size).await
+        ecrecover(&vec![*signature], &vec![*message], table_limbs, log_limb_size).await
     };
     assert_eq!(result[0], pk_affine_bytes);
 }

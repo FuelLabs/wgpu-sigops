@@ -65,9 +65,9 @@ pub fn init(
 }
 
 pub async fn ecverify(
-    signatures: Vec<Signature>,
-    messages: Vec<Message>,
-    verifying_keys: Vec<VerifyingKey>,
+    signatures: &Vec<Signature>,
+    messages: &Vec<Message>,
+    verifying_keys: &Vec<VerifyingKey>,
     table_limbs: &Vec<u32>,
     log_limb_size: u32,
 ) -> Vec<bool> {
@@ -251,9 +251,9 @@ pub async fn ecverify(
 }
 
 pub async fn ecverify_single(
-    signatures: Vec<Signature>,
-    messages: Vec<Message>,
-    verifying_keys: Vec<VerifyingKey>,
+    signatures: &Vec<Signature>,
+    messages: &Vec<Message>,
+    verifying_keys: &Vec<VerifyingKey>,
     log_limb_size: u32,
 ) -> Vec<bool> {
     let (num_signatures, next_pow_2, _num_limbs, all_sig_u32s, all_msg_u32s, all_pk_u32s, params_t) = init(&signatures, &messages, &verifying_keys, log_limb_size);
