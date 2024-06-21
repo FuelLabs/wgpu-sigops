@@ -19,6 +19,8 @@ pub mod secp256k1_curve;
 #[cfg(test)]
 pub mod secp256k1_ecdsa;
 #[cfg(test)]
+pub mod secp256k1_glv;
+#[cfg(test)]
 pub mod secp256r1_curve;
 #[cfg(test)]
 pub mod secp256r1_ecdsa;

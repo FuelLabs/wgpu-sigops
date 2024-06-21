@@ -292,7 +292,7 @@ ed25519 signature verification benchmarks (multiple shaders):
 | 65536              | 5842               | 5872               |
 | 131072             | 11697              | 10032              |
 
-##### Mac Mini (M1)
+##### Mac Mini (M1), model MGNR3FN/A
 
 secp256k1 signature recovery benchmarks (multiple shaders): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
@@ -308,7 +308,6 @@ secp256k1 signature recovery benchmarks (multiple shaders):
 
 GPU timings include data transfer.
 
-secp256r1 signature recovery benchmarks (multiple shaders): 
 secp256r1 signature recovery benchmarks (multiple shaders): 
 | Num. signatures    | CPU, serial (ms)   | GPU, parallel (ms) |
 | ------------------ | ------------------ | ------------------ |
