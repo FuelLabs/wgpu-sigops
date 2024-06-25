@@ -12,11 +12,56 @@ use num_bigint::{BigUint, RandomBits};
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
 use rand_chacha::ChaCha8Rng;
+use std::ops::Shr;
 
 const NUM_RUNS_PER_TEST: usize = 8;
 
 fn gen_rng() -> ChaCha8Rng {
     ChaCha8Rng::seed_from_u64(2)
+}
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn bigint_shr_384() {
+    let mut rng = gen_rng();
+    let p = moduli::secp256k1_fq_modulus_biguint();
+
+    fn biguint_func(a: &BigUint, b: &BigUint, _p: &BigUint) -> BigUint {
+        (a * b).shr(384)
+    }
+
+    fn bigint_func(
+        a: &Vec<u32>,
+        b: &Vec<u32>,
+        _p: &Vec<u32>,
+        log_limb_size: u32,
+    ) -> Vec<u32> {
+        let ab = bigint::mul(a, b, log_limb_size);
+        bigint::shr_384(&ab, log_limb_size)
+    }
+
+    for log_limb_size in 11..16 {
+        let num_limbs = calc_num_limbs(log_limb_size, 256);
+
+        for _ in 0..NUM_RUNS_PER_TEST {
+            let a: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+            let b: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
+
+            do_test(
+                &a,
+                &b,
+                &p,
+                log_limb_size,
+                num_limbs,
+                num_limbs,
+                bigint_func,
+                biguint_func,
+                "bigint_and_ff_tests.wgsl",
+                "test_bigint_shr_384",
+            )
+            .await;
+        }
+    }
 }
 
 #[serial_test::serial]

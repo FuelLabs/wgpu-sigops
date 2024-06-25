@@ -158,3 +158,22 @@ fn test_bigint_div_2(@builtin(global_invocation_id) global_id: vec3<u32>) {
         c.limbs[i] = result.limbs[i];
     }
 }
+
+@compute
+@workgroup_size(1)
+fn test_bigint_shr_384(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var p_bigint = get_p();
+    var p_wide = get_p_wide();
+    var mu_fp = get_mu_fp();
+
+    var a_bigint = a;
+    var b_bigint = b;
+
+    var ab: BigIntWide = bigint_mul(&a_bigint, &b_bigint);
+
+    var result: BigInt = bigint_shr_384(&ab);
+
+    for (var i = 0u; i < {{ num_limbs }}u; i ++) {
+        c.limbs[i] = result.limbs[i];
+    }
+}

@@ -222,3 +222,25 @@ fn bigint_to_bits_le(
     return BitsResult(bits, num_bits);
 }
 
+fn bigint_shr_384(
+    v: ptr<function, BigIntWide>
+) -> BigInt {
+    var result: BigInt;
+
+    var val = *v;
+    var limbs_to_shift = 384u / {{ log_limb_size }}u;
+    var bits_remaining = 384u % {{ log_limb_size }}u;
+    var mask = (1u << bits_remaining) - 1u;
+
+    for (var i = 0u; i < {{ num_limbs }}u; i ++) {
+        var src_index = i + limbs_to_shift;
+        if (src_index < {{ num_limbs * 2 }}u) {
+            var shifted = val.limbs[src_index] >> bits_remaining;
+            if (bits_remaining > 0u && src_index + 1u < {{ num_limbs * 2 }}u) {
+                shifted |= (val.limbs[src_index + 1u] & mask) << ({{ log_limb_size }}u - bits_remaining);
+            }
+            result.limbs[i] = shifted;
+        }
+    }
+    return result;
+}

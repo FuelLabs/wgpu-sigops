@@ -1,7 +1,8 @@
 use crate::curve_algos::coords::{JacobianXYZ, ProjectiveXYZ};
 use ark_ec::AffineRepr;
-use ark_ff::{Field, One, Zero};
-use ark_secp256k1::{Affine, Fq, Projective};
+use ark_ff::{Field, PrimeField, BigInteger, One, Zero};
+use ark_secp256k1::{Affine, Fq, Fr, Projective};
+use num_bigint::BigUint;
 
 pub fn jacobian_coords(pt: &Projective) -> (Fq, Fq, Fq) {
     let x = pt.x;
@@ -41,6 +42,29 @@ pub fn jacobian_to_normalised_projective(pt: &JacobianXYZ<Fq>) -> ProjectiveXYZ<
         let y = pt.y * &(zinv_squared * &zinv);
         ProjectiveXYZ { x, y, z: pt.z }
     }
+}
+
+pub fn glv_constants() -> (Fq, BigUint, BigUint, BigUint, BigUint, BigUint, BigUint) {
+    let n = BigUint::from_bytes_be(&Fr::MODULUS.to_bytes_be());
+
+    // Precomputed by Hal Finney
+    //let lambda = Fq::from(
+        //BigUint::parse_bytes(b"5363ad4cc05c30e0a5261c028812645a122e22ea20816678df02967c1b23bd72", 16).unwrap()
+    //);
+    let beta = Fq::from(
+        BigUint::parse_bytes(b"7ae96a2b657c07106e64479eac3434e99cf0497512f58995c1396c28719501ee", 16).unwrap()
+    );
+    let a1 = BigUint::parse_bytes(b"3086d221a7d46bcde86c90e49284eb15", 16).unwrap();
+    let b1 = &n - BigUint::parse_bytes(b"e4437ed6010e88286f547fa90abfe4c3", 16).unwrap();
+    let a2 = BigUint::parse_bytes(b"114ca50f7a8e2f3f657c1108d9d44cfd8", 16).unwrap();
+    let b2 = a1.clone();
+
+    // Precomputed by libsecp256k1 (?) according to
+    // https://github.com/Yawning/secp256k1-voi/blob/moon/point_mul_glv.go#L53
+    let g1 = BigUint::parse_bytes(b"3086d221a7d46bcde86c90e49284eb153daa8a1471e8ca7fe893209a45dbb031", 16).unwrap();
+    let g2 = BigUint::parse_bytes(b"e4437ed6010e88286f547fa90abfe4c4221208ac9df506c61571b4ae8ac47f71", 16).unwrap();
+
+    (beta, a1, b1, a2, b2, g1, g2)
 }
 
 /// https://www.hyperelliptic.org/EFD/g1p/auto-shortw-projective.html#addition-add-2007-bl
