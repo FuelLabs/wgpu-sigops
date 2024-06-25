@@ -341,12 +341,7 @@ fn projective_strauss_shamir_mul(
     p: ptr<function, BigInt>
 ) -> Point {
     // From https://github.com/mratsim/constantine/issues/36
-    var zero: BigInt;
-    var one: BigInt;
-    one.limbs[0] = 1u;
-
-    var result = Point(zero, one, zero);
-    var result_is_inf = true;
+    var result: Point;
 
     var s0 = *x;
     var s1 = *y;
@@ -357,21 +352,19 @@ fn projective_strauss_shamir_mul(
 
     // Precompute a + b
     var ab = projective_add_2007_bl_unsafe(a, b, p);
-    var point_to_add: Point;
 
     // Determine the length of the longest bitstring to avoid doing more loop
     // iterations than necessary
     var max_bits = max(s0_bitsresult.num_bits, s1_bitsresult.num_bits);
 
+    var point_to_add: Point;
     for (var idx = 0u; idx < max_bits; idx ++) {
         var i = max_bits - 1u - idx;
 
         let a_bit = s0_bitsresult.bits[i];
         let b_bit = s1_bitsresult.bits[i];
 
-        if (!result_is_inf) {
-            result = projective_dbl_2007_bl_unsafe(&result, p);
-        }
+        result = projective_dbl_2007_bl_unsafe(&result, p);
 
         if (a_bit && !b_bit) {
             point_to_add = *a;
@@ -383,13 +376,6 @@ fn projective_strauss_shamir_mul(
             continue;
         }
 
-        if (result_is_inf) {
-            // Assign instead of adding point_to_add to the point at
-            // infinity, which jacobian_add_2007_bl_unsafe doesn't support
-            result = point_to_add;
-            result_is_inf = false;
-            continue;
-        }
         result = projective_add_2007_bl_unsafe(&result, &point_to_add, p);
     }
 
@@ -459,3 +445,21 @@ fn projective_fixed_mul(
 
     return result;
 }
+
+/*
+ * Scalar multiplication using the GLV method
+fn projective_glv_mul(
+    pt: ptr<function, Point>,
+    x: ptr<function, BigInt>,
+    p: ptr<function, BigInt>
+) -> Point {
+    var result: Point;
+
+    // Split k into k1 and k2
+    // Map pt to pt_prime
+    // Normalise k1 and k2 to roughly half the bitlength of the scalar field
+    // Use the Strauss-Shamir method
+
+    return result;
+}
+ */
