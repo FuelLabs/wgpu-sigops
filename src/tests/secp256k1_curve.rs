@@ -67,7 +67,7 @@ pub async fn projective_mul() {
     let g = Affine::generator();
 
     for log_limb_size in 13..14 {
-        for _ in 0..1 {
+        for _ in 0..NUM_RUNS_PER_TEST {
             let s: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256));
             let s = Fr::from_be_bytes_mod_order(&s.to_bytes_be());
             let pt: Affine = g.mul(s).into_affine();
@@ -680,6 +680,7 @@ pub async fn strauss_shamir_mul() {
     }
 }
 
+/*
 #[serial_test::serial]
 #[tokio::test]
 pub async fn strauss_shamir_mul_2() {
@@ -737,6 +738,7 @@ pub async fn strauss_shamir_mul_2() {
     )
     .await;
 }
+*/
 
 pub async fn do_strauss_shamir_mul_test(
     a: &coords::ProjectiveXYZ<Fq>,

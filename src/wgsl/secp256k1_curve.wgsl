@@ -280,22 +280,14 @@ fn projective_mul(
     p: ptr<function, BigInt>
 ) -> Point {
     var result: Point;
-    var result_is_inf = true;
 
-    var s = *x;
     var temp = *pt;
-
-    while (!bigint_is_zero(&s)) {
-        if (!bigint_is_even(&s)) {
-            if (result_is_inf) {
-                result = temp;
-                result_is_inf = false;
-            } else {
-                result = projective_add_2007_bl_unsafe(&result, &temp, p);
-            }
+    var b = bigint_to_bits_le(x);
+    for (var i = 0u; i < b.num_bits; i ++) {
+        if (b.bits[i]) {
+            result = projective_add_2007_bl_unsafe(&result, &temp, p);
         }
         temp = projective_dbl_2007_bl_unsafe(&temp, p);
-        s = bigint_div2(&s);
     }
 
     return result;

@@ -1,6 +1,6 @@
 use ark_secp256k1::{Affine, Fq, Fr};
 use ark_ec::{AffineRepr, CurveGroup};
-use std::ops::{Mul, Neg};
+use std::ops::{Mul, Neg, Shr};
 use num_bigint::{BigUint, RandomBits};
 use rand::Rng;
 use rand_chacha::rand_core::SeedableRng;
@@ -23,9 +23,13 @@ pub async fn test_secp256k1_glv() {
 
     let a1 = BigUint::parse_bytes(b"3086d221a7d46bcde86c90e49284eb15", 16).unwrap();
     let b1 = &n - BigUint::parse_bytes(b"e4437ed6010e88286f547fa90abfe4c3", 16).unwrap();
-    let neg_b1 = &n - &b1;
     let a2 = BigUint::parse_bytes(b"114ca50f7a8e2f3f657c1108d9d44cfd8", 16).unwrap();
     let b2 = a1.clone();
+
+    // Precomputed by libsecp256k1 (?) according to
+    // https://github.com/Yawning/secp256k1-voi/blob/moon/point_mul_glv.go#L53
+    let g1 = BigUint::parse_bytes(b"3086d221a7d46bcde86c90e49284eb153daa8a1471e8ca7fe893209a45dbb031", 16).unwrap();
+    let g2 = BigUint::parse_bytes(b"e4437ed6010e88286f547fa90abfe4c4221208ac9df506c61571b4ae8ac47f71", 16).unwrap();
 
     let mut rng = ChaCha8Rng::seed_from_u64(2);
 
@@ -34,8 +38,8 @@ pub async fn test_secp256k1_glv() {
         let k: BigUint = rng.sample::<BigUint, RandomBits>(RandomBits::new(256)) % &n;
 
         // Split k into k1 and k2
-        let c1 = (&b2 * &k) / &n;
-        let c2 = ((&neg_b1) * &k) / &n;
+        let c1 = (&k * &g1).shr(384u32);
+        let c2 = (&k * &g2).shr(384u32);
 
         let mut k1 = Fr::from(&k - &c1 * &a1 - &c2 * &a2);
         let mut k2 = Fr::from((&n - &c1) * &b1 - &c2 * &b2);
