@@ -50,6 +50,7 @@ The function signature of `ecrecover` or `ecrecover_single` is:
 pub async fn ecrecover(
     signatures: Vec<Signature>,
     messages: Vec<Message>,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
 ) -> Vec<Vec<u8>>
 ```
@@ -58,6 +59,10 @@ pub async fn ecrecover(
 [`fuel-crypto`](https://crates.io/crates/fuel-crypto).
 
 The length of `signatures` and `messages` should be the same.
+
+`table_limbs` are precomputed multiples of the secp256k1 or secp256r1 generator
+point, and can be easily generated using `precompute::secp256k1_bases` or
+`precompute::secp256r1_bases` respectively.
 
 `log_limb_size` indicates the bitwidth of each limb in the shaders'
 representation of big integers. A safe default is 13.
@@ -80,6 +85,7 @@ pub async fn ecverify(
     signatures: Vec<Signature>,
     messages: Vec<Message>,
     verifying_keys: Vec<VerifyingKey>,
+    table_limbs: &Vec<u32>,
     log_limb_size: u32,
 ) -> Vec<bool>
 ```
@@ -87,6 +93,9 @@ pub async fn ecverify(
 `Signature` is from [`ed25519-dalek`](https://crates.io/crates/ed25519-dalek).
 `Message` and `VerifyingKey` are from
 [`fuel-crypto`](https://crates.io/crates/fuel-crypto).
+
+`table_limbs` are precomputed multiples of the curve25519 generator
+point, and can be easily generated using `precompute::ed25519_bases`.
 
 The output is a `Vec` of booleans which correspond to `true` if the i-th
 recovery is valid, and `false` otherwise.
