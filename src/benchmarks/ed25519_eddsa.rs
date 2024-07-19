@@ -119,6 +119,13 @@ pub async fn do_benchmark(
     } else {
         ecverify(&signatures, &messages, &verifying_keys, table_limbs, log_limb_size).await
     };
+
+    if all_is_valid.is_err() {
+        panic!("Shader failed");
+    }
+
+    let all_is_valid = all_is_valid.unwrap();
+
     let gpu_ms = sw.elapsed_ms();
 
     if check {

@@ -63,13 +63,13 @@ pub async fn ecrecover(
     messages: &Vec<Message>,
     table_limbs: &Vec<u32>,
     log_limb_size: u32,
-) -> Vec<Vec<u8>> {
+) -> Result<Vec<Vec<u8>>, crate::ShaderFailureError> {
     let (num_signatures, next_pow_2, num_limbs, all_sig_u32s, all_msg_u32s, params_t) = init(&signatures, &messages, log_limb_size);
     let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = params_t;
     let params = &[num_x_workgroups, num_y_workgroups, num_z_workgroups];
 
     if num_signatures == 0 {
-        return vec![];
+        return Ok(vec![]);
     }
 
     let (device, queue) = get_device_and_queue().await;
@@ -174,12 +174,13 @@ pub async fn ecrecover(
     let compute_pipeline = create_compute_pipeline(&device, &source, "secp256k1_recover_4");
 
     let result_buf = create_empty_sb(&device, (64 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let success_buf = create_empty_sb(&device, std::mem::size_of::<u32>() as u64);
 
     let bind_group = create_bind_group(
         &device,
         &compute_pipeline,
         0,
-        &[&sum_buf, &result_buf, &params_buf],
+        &[&sum_buf, &result_buf, &success_buf, &params_buf],
     );
 
     execute_pipeline(
@@ -195,29 +196,33 @@ pub async fn ecrecover(
         &device,
         &queue,
         Box::new(command_encoder),
-        &[result_buf],
+        &[result_buf, success_buf],
     )
     .await;
+
+    if results[1][0] != 1 {
+        return Err(crate::ShaderFailureError);
+    }
 
     let mut all_recovered: Vec<Vec<u8>> = Vec::with_capacity(num_signatures * 64);
     for i in 0..num_signatures {
         let result_bytes = &results[0][i * 64..i * 64 + 64];
         all_recovered.push(result_bytes.to_vec());
     }
-    all_recovered
+    Ok(all_recovered)
 }
 
 pub async fn ecrecover_single_shader(
     signatures: &Vec<Signature>,
     messages: &Vec<Message>,
     log_limb_size: u32,
-) -> Vec<Vec<u8>> {
+) -> Result<Vec<Vec<u8>>, crate::ShaderFailureError> {
     let (num_signatures, next_pow_2, _num_limbs, all_sig_u32s, all_msg_u32s, params_t) = init(&signatures, &messages, log_limb_size);
     let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = params_t;
     let params = &[num_x_workgroups, num_y_workgroups, num_z_workgroups];
 
     if num_signatures == 0 {
-        return vec![];
+        return Ok(vec![]);
     }
 
     let (device, queue) = get_device_and_queue().await;
@@ -229,13 +234,14 @@ pub async fn ecrecover_single_shader(
     let sig_buf = create_sb_with_data(&device, &all_sig_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
     let result_buf = create_empty_sb(&device, (64 * next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let success_buf = create_empty_sb(&device, std::mem::size_of::<u32>() as u64);
     let params_buf = create_ub_with_data(&device, params);
 
     let bind_group = create_bind_group(
         &device,
         &compute_pipeline,
         0,
-        &[&sig_buf, &msg_buf, &result_buf, &params_buf],
+        &[&sig_buf, &msg_buf, &result_buf, &success_buf, &params_buf],
     );
 
     execute_pipeline(
@@ -251,14 +257,18 @@ pub async fn ecrecover_single_shader(
         &device,
         &queue,
         Box::new(command_encoder),
-        &[result_buf],
+        &[result_buf, success_buf],
     )
     .await;
+
+    if results[1][0] != 1 {
+        return Err(crate::ShaderFailureError);
+    }
 
     let mut all_recovered: Vec<Vec<u8>> = Vec::with_capacity(num_signatures * 64);
     for i in 0..num_signatures {
         let result_bytes = &results[0][i * 64..i * 64 + 64];
         all_recovered.push(result_bytes.to_vec());
     }
-    all_recovered
+    Ok(all_recovered)
 }

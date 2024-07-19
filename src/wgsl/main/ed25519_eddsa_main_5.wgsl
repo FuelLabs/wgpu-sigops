@@ -14,7 +14,8 @@
 @group(0) @binding(0) var<storage, read_write> pt: array<ETEAffinePoint>;
 @group(0) @binding(1) var<storage, read_write> is_valid: array<u32>;
 @group(0) @binding(2) var<storage, read_write> sig: array<u32>;
-@group(0) @binding(3) var<uniform> params: vec3<u32>;
+@group(0) @binding(3) var<storage, read_write> success: u32;
+@group(0) @binding(4) var<uniform> params: vec3<u32>;
 
 @compute
 @workgroup_size(256)
@@ -40,4 +41,6 @@ fn ed25519_verify_main_5(@builtin(global_invocation_id) global_id: vec3<u32>) {
     }
 
     is_valid[id] = v;
+
+    success = 1u;
 }

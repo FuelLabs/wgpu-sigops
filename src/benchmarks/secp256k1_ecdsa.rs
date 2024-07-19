@@ -129,6 +129,12 @@ pub async fn do_benchmark(
     } else {
         ecrecover(&signatures, &messages, &table_limbs, log_limb_size).await
     };
+
+    if recovered.is_err() {
+        panic!("Shader failed");
+    }
+
+    let recovered = recovered.unwrap();
     let gpu_ms = sw.elapsed_ms();
 
     if check {

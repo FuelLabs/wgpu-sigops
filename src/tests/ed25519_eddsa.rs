@@ -66,7 +66,7 @@ pub async fn do_eddsa_test(
         ecverify_single(&vec![*signature], &vec![*message], &vec![*verifying_key], log_limb_size).await
     } else {
         ecverify(&vec![*signature], &vec![*message], &vec![*verifying_key], table_limbs, log_limb_size).await
-    };
+    }.expect("Shader failed");
     for r in result {
         assert!(r);
     }

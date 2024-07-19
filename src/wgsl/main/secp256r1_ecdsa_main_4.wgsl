@@ -13,7 +13,8 @@
 
 @group(0) @binding(0) var<storage, read_write> sum: array<Point>;
 @group(0) @binding(1) var<storage, read_write> result: array<u32>;
-@group(0) @binding(2) var<uniform> params: vec3<u32>;
+@group(0) @binding(2) var<storage, read_write> success: u32;
+@group(0) @binding(3) var<uniform> params: vec3<u32>;
 
 @compute
 @workgroup_size(256)
@@ -48,4 +49,6 @@ fn secp256r1_recover_4(@builtin(global_invocation_id) global_id: vec3<u32>) {
         result[id * 16u + i] = x_bytes[i];
         result[id * 16u + i + 8u] = y_bytes[i];
     }
+
+    success = 1u;
 }

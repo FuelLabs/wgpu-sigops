@@ -70,7 +70,7 @@ pub async fn ecverify(
     verifying_keys: &Vec<VerifyingKey>,
     table_limbs: &Vec<u32>,
     log_limb_size: u32,
-) -> Vec<bool> {
+) -> Result<Vec<bool>, crate::ShaderFailureError> {
     let (num_signatures, next_pow_2, num_limbs, all_sig_u32s, all_msg_u32s, all_pk_u32s, params_t) = init(&signatures, &messages, &verifying_keys, log_limb_size);
     let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = params_t;
     let params = &[
@@ -80,7 +80,7 @@ pub async fn ecverify(
     ];
 
     if num_signatures == 0 {
-        return vec![];
+        return Ok(vec![]);
     }
 
     let (device, queue) = get_device_and_queue().await;
@@ -217,13 +217,14 @@ pub async fn ecverify(
     let source = render_ed25519_eddsa("ed25519_eddsa_main_5.wgsl", log_limb_size);
     let compute_pipeline = create_compute_pipeline(&device, &source, "ed25519_verify_main_5");
 
+    let success_buf = create_empty_sb(&device, std::mem::size_of::<u32>() as u64);
     let is_valid_buf = create_empty_sb(&device, (next_pow_2 * std::mem::size_of::<u32>()) as u64);
 
     let bind_group = create_bind_group(
         &device,
         &compute_pipeline,
         0,
-        &[&pt_buf, &is_valid_buf, &sig_buf, &params_buf],
+        &[&pt_buf, &is_valid_buf, &sig_buf, &success_buf, &params_buf],
     );
 
     execute_pipeline(
@@ -239,15 +240,20 @@ pub async fn ecverify(
         &device,
         &queue,
         Box::new(command_encoder),
-        &[is_valid_buf],
+        &[is_valid_buf, success_buf],
     )
     .await;
+
+    if results[1][0] != 1 {
+        return Err(crate::ShaderFailureError);
+    }
+
     let mut all_is_valid: Vec<bool> = Vec::with_capacity(num_signatures);
     for i in 0..num_signatures {
         all_is_valid.push(results[0][i * 4] == 1);
     }
 
-    all_is_valid
+    Ok(all_is_valid)
 }
 
 pub async fn ecverify_single(
@@ -255,7 +261,7 @@ pub async fn ecverify_single(
     messages: &Vec<Message>,
     verifying_keys: &Vec<VerifyingKey>,
     log_limb_size: u32,
-) -> Vec<bool> {
+) -> Result<Vec<bool>, crate::ShaderFailureError> {
     let (num_signatures, next_pow_2, _num_limbs, all_sig_u32s, all_msg_u32s, all_pk_u32s, params_t) = init(&signatures, &messages, &verifying_keys, log_limb_size);
     let (num_x_workgroups, num_y_workgroups, num_z_workgroups) = params_t;
     let params = &[
@@ -265,7 +271,7 @@ pub async fn ecverify_single(
     ];
 
     if num_signatures == 0 {
-        return vec![];
+        return Ok(vec![]);
     }
 
     let (device, queue) = get_device_and_queue().await;
@@ -275,6 +281,7 @@ pub async fn ecverify_single(
     let pk_buf = create_sb_with_data(&device, &all_pk_u32s);
     let msg_buf = create_sb_with_data(&device, &all_msg_u32s);
     let is_valid_buf = create_empty_sb(&device, (next_pow_2 * std::mem::size_of::<u32>()) as u64);
+    let success_buf = create_empty_sb(&device, std::mem::size_of::<u32>() as u64);
     let params_buf = create_ub_with_data(&device, params);
 
     let source = render_ed25519_eddsa("ed25519_eddsa_main.wgsl", log_limb_size);
@@ -284,7 +291,7 @@ pub async fn ecverify_single(
         &device,
         &compute_pipeline,
         0,
-        &[&sig_buf, &pk_buf, &msg_buf, &is_valid_buf, &params_buf],
+        &[&sig_buf, &pk_buf, &msg_buf, &is_valid_buf, &success_buf, &params_buf],
     );
 
     execute_pipeline(
@@ -300,13 +307,18 @@ pub async fn ecverify_single(
         &device,
         &queue,
         Box::new(command_encoder),
-        &[is_valid_buf],
+        &[is_valid_buf, success_buf],
     )
     .await;
+
+    if results[1][0] != 1 {
+        return Err(crate::ShaderFailureError);
+    }
+
     let mut all_is_valid: Vec<bool> = Vec::with_capacity(num_signatures);
     for i in 0..num_signatures {
         all_is_valid.push(results[0][i * 4] == 1);
     }
 
-    all_is_valid
+    Ok(all_is_valid)
 }

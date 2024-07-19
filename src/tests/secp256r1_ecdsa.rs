@@ -96,6 +96,6 @@ pub async fn do_secp256r1_test(
         ecrecover_single_shader(&vec![*signature], &vec![*message], log_limb_size).await
     } else {
         ecrecover(&vec![*signature], &vec![*message], table_limbs, log_limb_size).await
-    };
+    }.expect("Shader failed");
     assert_eq!(result[0], pk_affine_bytes);
 }

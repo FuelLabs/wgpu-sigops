@@ -15,7 +15,8 @@
 @group(0) @binding(1) var<storage, read_write> pk: array<u32>;
 @group(0) @binding(2) var<storage, read_write> msg: array<u32>;
 @group(0) @binding(3) var<storage, read_write> is_valid: array<u32>;
-@group(0) @binding(4) var<uniform> params: vec3<u32>;
+@group(0) @binding(4) var<storage, read_write> success: u32;
+@group(0) @binding(5) var<uniform> params: vec3<u32>;
 
 @compute
 @workgroup_size(256)
@@ -105,5 +106,8 @@ fn ed25519_verify_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
             break;
         }
     }
+
     is_valid[id] = v;
+
+    success = 1u;
 }
