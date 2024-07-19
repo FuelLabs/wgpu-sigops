@@ -74,7 +74,7 @@ fn ed25519_verify_main(@builtin(global_invocation_id) global_id: vec3<u32>) {
         k_u32s[i + 16u] = u32_be_to_le(msg_u32s[i]);
     }
 
-    // Compute the hash
+    // Compute the hash. The result is 512 bits in big-endian, as 16 * 32-bit values.
     var hash_u32s: array<u32, 16> = sha512_96(&k_u32s);
 
     // Rearrange the bytes

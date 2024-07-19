@@ -64,3 +64,57 @@ pub async fn do_ed25519_reduce_fr_test(input: &BigUint, filename: &str, entrypoi
     //println!("{}", hex::encode(&result.to_bytes_be()));
     assert_eq!(result, expected);
 }
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn test_convert_512_be_to_le() {
+    let mut rng = ChaCha8Rng::seed_from_u64(0 as u64);
+
+    for _ in 0..10 {
+        let mut input = [0u8; 64];
+        rng.fill_bytes(&mut input);
+        let x = BigUint::from_bytes_be(&input);
+
+        do_convert_512_be_to_le_test(&x, "ed25519_reduce_fr_tests.wgsl", "test_convert_512_be_to_le")
+            .await;
+    }
+}
+
+pub async fn do_convert_512_be_to_le_test(input: &BigUint, filename: &str, entrypoint: &str) {
+    let (device, queue) = get_device_and_queue().await;
+    let input_bytes = input.to_bytes_be();
+    let mut input_u32s = Vec::with_capacity(input_bytes.len() / 4);
+    for chunk in input_bytes.chunks(4) {
+        let value = BigEndian::read_u32(chunk);
+        input_u32s.push(value);
+    }
+
+    let input_buf = create_sb_with_data(&device, &input_u32s);
+    let result_buf = create_empty_sb(&device, input_buf.size() * 2);
+
+    let source = render_ed25519_reduce_fr_tests(filename);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(&device, &compute_pipeline, 0, &[&input_buf, &result_buf]);
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
+
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
+
+    let result = multiprecision::bigint::to_biguint_le(&results[0], 32, 16);
+
+    //println!("{}", hex::encode(&result.to_bytes_be()));
+    //println!("{}", hex::encode(&input.to_bytes_be()));
+    assert_eq!(&result.to_bytes_be(), &input.to_bytes_be());
+}

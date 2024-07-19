@@ -74,6 +74,17 @@ fn shr_512(
     return limbs;
 }
 
+fn convert_512_be_to_le(
+    x: ptr<function, array<u32, 16>>
+) -> array<u32, 32> {
+    var x_limbs: array<u32, 32>;
+    for (var i = 0u; i < 16u; i ++) {
+        x_limbs[i * 2 + 1] = (*x)[15 - i] >> 16u;
+        x_limbs[i * 2 + 0] = (*x)[15 - i] & 0xffff;
+    }
+    return x_limbs;
+}
+
 fn ed25519_reduce_fr(
     x: ptr<function, array<u32, 16>>
 ) -> array<u32, 32> {
@@ -82,12 +93,8 @@ fn ed25519_reduce_fr(
     {{ fr_reduce_r_limbs_array }}
     {{ scalar_p_limbs_array }}
 
-    // Convert x (16 x u32 in big-endian) to 32 x u32s in little-endian
-    var x_limbs: array<u32, 32>;
-    for (var i = 0u; i < 16u; i ++) {
-        x_limbs[i * 2 + 1] = (*x)[15 - i] >> 16u;
-        x_limbs[i * 2 + 0] = (*x)[15 - i] & 0xffff;
-    }
+    // Convert x (16 * 32-bit values in big-endian) to 32 * 16-bit values in little-endian
+    var x_limbs: array<u32, 32> = convert_512_be_to_le(x);
 
     var xr_limbs = mul(&x_limbs, &fr_reduce_r_limbs);
     var xr_shr_512_limbs = shr_512(&xr_limbs);
