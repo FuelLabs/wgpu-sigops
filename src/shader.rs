@@ -522,6 +522,7 @@ pub fn render_ed25519_reduce_fr_tests(template_file: &str) -> String {
 }
 
 pub fn gen_ed25519_reduce_fr_constants(scalar_p: &BigUint) -> (String, String) {
+    // 2 ** 512 / p
     let r = BigUint::parse_bytes(
         b"fffffffffffffffffffffffffffffffeb2106215d086329a7ed9ce5a30a2c131b",
         16,
