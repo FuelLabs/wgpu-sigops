@@ -243,3 +243,64 @@ pub async fn do_shr_512_test(input: &BigUint, filename: &str, entrypoint: &str) 
 
     assert_eq!(&result.to_bytes_be(), &expected.to_bytes_be());
 }
+
+#[serial_test::serial]
+#[tokio::test]
+pub async fn test_sub_wide() {
+    let mut rng = ChaCha8Rng::seed_from_u64(0 as u64);
+
+    for _ in 0..10 {
+        let mut input = [0u8; 64];
+        rng.fill_bytes(&mut input);
+        let x = BigUint::from_bytes_be(&input);
+
+        do_sub_wide_test(&x, "ed25519_reduce_fr_tests.wgsl", "test_sub_wide")
+            .await;
+    }
+}
+
+pub async fn do_sub_wide_test(input: &BigUint, filename: &str, entrypoint: &str) {
+    let fr_reduce_r = BigUint::parse_bytes(
+        b"fffffffffffffffffffffffffffffffeb2106215d086329a7ed9ce5a30a2c131b",
+        16,
+    )
+    .unwrap();
+
+    let expected: BigUint = input - &fr_reduce_r;
+
+    let (device, queue) = get_device_and_queue().await;
+    let input_bytes = input.to_bytes_be();
+    let mut input_u32s = Vec::with_capacity(input_bytes.len() / 4);
+    for chunk in input_bytes.chunks(4) {
+        let value = BigEndian::read_u32(chunk);
+        input_u32s.push(value);
+    }
+
+    let input_buf = create_sb_with_data(&device, &input_u32s);
+    let result_buf = create_empty_sb(&device, input_buf.size() * 2);
+    let result_wide_buf = create_empty_sb(&device, input_buf.size() * 4);
+
+    let source = render_ed25519_reduce_fr_tests(filename);
+    let compute_pipeline = create_compute_pipeline(&device, &source, entrypoint);
+
+    let mut command_encoder = create_command_encoder(&device);
+
+    let bind_group = create_bind_group(&device, &compute_pipeline, 0, &[&input_buf, &result_buf, &result_wide_buf]);
+
+    execute_pipeline(
+        &mut command_encoder,
+        &compute_pipeline,
+        &bind_group,
+        1,
+        1,
+        1,
+    );
+
+    let results =
+        finish_encoder_and_read_from_gpu(&device, &queue, Box::new(command_encoder), &[result_buf])
+            .await;
+
+    let result = multiprecision::bigint::to_biguint_le(&results[0], 32, 16);
+
+    assert_eq!(&result.to_bytes_be(), &expected.to_bytes_be());
+}

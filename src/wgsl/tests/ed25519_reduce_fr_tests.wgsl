@@ -60,3 +60,18 @@ fn test_shr_512(@builtin(global_invocation_id) global_id: vec3<u32>) {
     result = shr_512(&xr_limbs);
     result_wide[0] = 0u;
 }
+
+@compute
+@workgroup_size(1)
+fn test_sub_wide(@builtin(global_invocation_id) global_id: vec3<u32>) {
+    var x: array<u32, 16>;
+    for (var i = 0u; i < 16u; i ++) {
+        x[i] = input[i];
+    }
+
+    {{ fr_reduce_r_limbs_array }}
+
+    var x_limbs = convert_512_be_to_le(&x);
+    result = sub(&x_limbs, &fr_reduce_r_limbs);
+    result_wide[0] = 0u;
+}
