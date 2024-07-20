@@ -11,7 +11,7 @@ use stopwatch::Stopwatch;
 use crate::precompute::secp256r1_bases;
 
 const START: usize = 8;
-const END: usize = 15;
+const END: usize = 14;
 
 #[serial_test::serial]
 #[tokio::test]

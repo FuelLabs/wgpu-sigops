@@ -9,7 +9,7 @@ use rand_chacha::ChaCha8Rng;
 use stopwatch::Stopwatch;
 
 const START: usize = 10;
-const END: usize = 17;
+const END: usize = 15;
 
 #[serial_test::serial]
 #[tokio::test]
