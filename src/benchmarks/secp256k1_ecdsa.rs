@@ -60,7 +60,7 @@ pub async fn secp256k1_ecrecover_benchmarks_multi_shader() {
     let log_limb_size = 13;
     let table_limbs = secp256k1_bases(log_limb_size);
     let check = true;
-    let num_signatures = 2u32.pow(13u32) as usize;
+    let num_signatures = 2u32.pow(10u32) as usize;
     //let num_signatures = 255;
     let (signatures, messages, expected_pks) = gen_test_data(num_signatures);
 
