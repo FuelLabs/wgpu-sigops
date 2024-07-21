@@ -59,7 +59,7 @@ pub async fn ed25519_ecverify_benchmarks_multi_shader() {
     let check = true;
     let log_limb_size = 13u32;
     let table_limbs = ed25519_bases(log_limb_size);
-    let num_signatures = 2u32.pow(13u32) as usize;
+    let num_signatures = 2u32.pow(10u32) as usize;
 
     let (signatures, messages, verifying_keys) = gen_test_data(num_signatures);
 
